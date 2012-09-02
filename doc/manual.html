@@ -193,73 +193,23 @@
       <dt id="option_lineNumberFormatter"><code>lineNumberFormatter (function(integer))</code></dt>
       <dd>A function used to format line numbers. The function is passed the current line number. Default prints the line number verbatim.</dd>
 
-      <dt id="option_gutter"><code>gutter (boolean)</code></dt>
-      <dd>Can be used to force a 'gutter' (empty space on the left of
-      the editor) to be shown even when no line numbers are active.
-      This is useful for setting <a href="#setMarker">markers</a>.</dd>
-
-      <dt id="option_fixedGutter"><code>fixedGutter (boolean)</code></dt>
-      <dd>When enabled (off by default), this will make the gutter
-      stay visible when the document is scrolled horizontally.</dd>
+      <dt id="option_gutters"><code>gutters (array)</code></dt>
+      <dd>Can be used to add extra gutters (beyond or instead of the
+      line number gutter). Should be an array of CSS class names, each
+      of which defines a <code>width</code> (and optionally a
+      background), and which will be used to draw the background of
+      the gutters. <em>May</em> include
+      the <code>CodeMirror-linenumbers</code> class, in order to
+      explicitly set the position of the line number gutter (it will
+      default to be to the right of all other gutters). These class
+      names are the keys passed
+      to <a href="#setGutterMarker"><code>setGutterMarker</code></a>.</dd>
 
       <dt id="option_readOnly"><code>readOnly (boolean)</code></dt>
       <dd>This disables editing of the editor content by the user. If
       the special value <code>"nocursor"</code> is given (instead of
       simply <code>true</code>), focusing of the editor is also
       disallowed.</dd>
-
-      <dt id="option_onChange"><code>onChange (function)</code></dt>
-      <dd>When given, this function will be called every time the
-      content of the editor is changed. It will be given the editor
-      instance as first argument, and an <code>{from, to, text, next}</code>
-      object containing information about the changes
-      that occurred as second argument. <code>from</code>
-      and <code>to</code> are the positions (in the pre-change
-      coordinate system) where the change started and
-      ended (for example, it might be <code>{ch:0, line:18}</code> if the
-      position is at the beginning of line #19). <code>text</code>
-      is an array of strings representing the text that replaced the changed
-      range (split by line). If multiple changes happened during a single
-      operation, the object will have a <code>next</code> property pointing to
-      another change object (which may point to another, etc).</dd>
-
-      <dt id="option_onCursorActivity"><code>onCursorActivity (function)</code></dt>
-      <dd>Will be called when the cursor or selection moves, or any
-      change is made to the editor content.</dd>
-
-      <dt id="option_onViewportChange"><code>onViewportChange (function)</code></dt>
-      <dd>When given, will be called whenever
-      the <a href="#getViewport">view port</a> of the editor changes
-      (due to scrolling, editing, or any other factor). It will be
-      passed three arguments, the editor instance, the start of the
-      viewport, and its end.</dd>
-
-      <dt id="option_onGutterClick"><code>onGutterClick (function)</code></dt>
-      <dd>When given, will be called whenever the editor gutter (the
-      line-number area) is clicked. Will be given the editor instance
-      as first argument, the (zero-based) number of the line that was
-      clicked as second argument, and the raw <code>mousedown</code>
-      event object as third argument.</dd>
-
-      <dt id="option_onFocus"><code>onFocus, onBlur (function)</code></dt>
-      <dd>The given functions will be called whenever the editor is
-      focused or unfocused.</dd>
-
-      <dt id="option_onScroll"><code>onScroll (function)</code></dt>
-      <dd>When given, will be called whenever the editor is
-      scrolled.</dd>
-
-      <dt id="option_onHighlightComplete"><code>onHighlightComplete (function)</code></dt>
-      <dd>Whenever the editor's content has been fully highlighted,
-      this function (if given) will be called. It'll be given a single
-      argument, the editor instance.</dd>
-
-      <dt id="option_onUpdate"><code>onUpdate (function)</code></dt>
-      <dd>Will be called whenever CodeMirror updates its DOM display.</dd>
-
-      <dt id="option_matchBrackets"><code>matchBrackets (boolean)</code></dt>
-      <dd>Determines whether brackets are matched whenever the cursor
-      is moved next to a bracket.</dd>
 
       <dt id="option_cursorBlinkRate"><code>cursorBlinkRate (number)</code></dt>
       <dd>Half-period in milliseconds used for cursor blinking. The default blink
@@ -327,6 +277,90 @@
       its <code>type</code> property and only do something when it
       is <code>keydown</code> (or <code>keypress</code> for actions
       that need character data).</dd>
+    </dl>
+
+    <h2 id="events">Events</h2>
+
+    <p>A CodeMirror instance emits a number of events, which allow
+    client code to react to various situations. These are registered
+    with the <a href="#connect"><code>connect</code></a> method (and
+    removed with the <a href="#disconnect"><code>disconnect</code></a>
+    method). These are the events that fire on the instance object.
+    The name of the event is followed by the arguments that will be
+    passed to the handler. The <code>instance</code> argument always
+    refers to the editor instance.</p>
+
+    <dl>
+      <dt id="event_change"><code>"change" (instance, changeObj)</code></dt>
+      <dd>Fires every time the content of the editor is changed.
+      The <code>changeObj</code> is a <code>{from, to, text,
+      next}</code> object containing information about the changes
+      that occurred as second argument. <code>from</code>
+      and <code>to</code> are the positions (in the pre-change
+      coordinate system) where the change started and ended (for
+      example, it might be <code>{ch:0, line:18}</code> if the
+      position is at the beginning of line #19). <code>text</code> is
+      an array of strings representing the text that replaced the
+      changed range (split by line). If multiple changes happened
+      during a single operation, the object will have
+      a <code>next</code> property pointing to another change object
+      (which may point to another, etc).</dd>
+
+      <dt id="event_cursorActivity"><code>"cursorActivity" (instance)</code></dt>
+      <dd>Will be fired when the cursor or selection moves, or any
+      change is made to the editor content.</dd>
+
+      <dt id="event_viewportChange"><code>"viewportChange" (instance, from, to)</code></dt>
+      <dd>Fires whenever the <a href="#getViewport">view port</a> of
+      the editor changes (due to scrolling, editing, or any other
+      factor). The <code>from</code> and <code>to</code> arguments
+      give the new start and end of the viewport.</dd>
+
+      <dt id="event_gutterClick"><code>"gutterClick" (instance, line, gutter, clickEvent)</code></dt>
+      <dd>Fires when the editor gutter (the line-number area) is
+      clicked. Will pass the editor instance as first argument, the
+      (zero-based) number of the line that was clicked as second
+      argument, the CSS class of the gutter that was clicked as third
+      argument, and the raw <code>mousedown</code> event object as
+      fourth argument.</dd>
+
+      <dt id="event_focus"><code>"focus", "blur" (instance)</code></dt>
+      <dd>These fire whenever the editor is focused or unfocused.</dd>
+
+      <dt id="event_scroll"><code>"scroll" (instance)</code></dt>
+      <dd>Fires when the editor is scrolled.</dd>
+
+      <dt id="event_update"><code>"update" (instance)</code></dt>
+      <dd>Will be fired whenever CodeMirror updates its DOM display.</dd>
+    </dl>
+
+    <p>It is also possible to <a href="#connect">register</a> events
+    on other objects. Line handles (as returned by, for
+    example, <a href="#getLineHandle"><code>getLineHandle</code></a>)
+    can be listened on with <code>CodeMirror.connect(handle, "delete",
+    myFunc)</code>. They support the following events:</p>
+
+    <dl>
+      <dt id="event_delete"><code>"delete" ()</code></dt>
+      <dd>Will be fired when the line object is deleted. A line object
+      is associated with the <em>start</em> of the line. Mostly useful
+      when you need to find out when your <a href="#setMarker">gutter
+      markers</a> on a given line are removed.</dd>
+      <dt id="event_line_change"><code>"change" ()</code></dt>
+      <dd>Fires when the line's text content is changed in any way
+      (but the line is not deleted outright).</dd>
+    </dl>
+
+    <p>Folded range handles, as returned
+    by <a href="#foldLines"><code>foldLines</code></a>, emit the
+    following event:</p>
+
+    <dl>
+      <dt id="event_unfold"><code>"unfold" ()</code></dt>
+      <dd>Fired when the range is unfolded, either through cursor
+      movement or through a call
+      to <a href="#unfoldLines"><code>unfoldLines</code></a>. Will
+      only be fired once per handle.</dd>
     </dl>
 
     <h2 id="keymaps">Keymaps</h2>
@@ -405,41 +439,43 @@
     <dl>
       <dt id="class_CodeMirror"><code>CodeMirror</code></dt>
       <dd>The outer element of the editor. This should be used for the
-      editor width, borders and positioning. Can also be used to set
-      styles that should hold for everything inside the editor (such
-      as font and font size), or to set a background.</dd>
+      editor width, height, borders and positioning. Can also be used
+      to set styles that should hold for everything inside the editor
+      (such as font and font size), or to set a background.</dd>
 
       <dt id="class_CodeMirror_scroll"><code>CodeMirror-scroll</code></dt>
-      <dd>This determines the editor's height, and whether the editor
-      scrolls (<code>overflow: auto</code> + fixed height). By
-      default, it does. Giving this <code>height: auto; overflow:
-      visible;</code> will cause the editor to resize to fit its
-      content.</dd>
+      <dd>Whether the editor scrolls (<code>overflow: auto</code> +
+      fixed height). By default, it does. Setting
+      the <code>CodeMirror</code> class to have <code>height:
+      auto</code> and giving this class <code>overflow-x: auto;
+      overflow-y: hidden;</code> will cause the editor
+      to <a href="../demo/resize.html">resize to fit its
+      content</a>.</dd>
 
       <dt id="class_CodeMirror_focused"><code>CodeMirror-focused</code></dt>
       <dd>Whenever the editor is focused, the top element gets this
       class. This is used to hide the cursor and give the selection a
       different color when the editor is not focused.</dd>
 
-      <dt id="class_CodeMirror_gutter"><code>CodeMirror-gutter</code></dt>
-      <dd>Use this for giving a background or a border to the editor
-      gutter. Don't set any padding here,
-      use <code>CodeMirror-gutter-text</code> for that. By default,
-      the gutter is 'fluid', meaning it will adjust its width to the
-      maximum line number or line marker width. You can also set a
-      fixed width if you want.</dd>
+      <dt id="class_CodeMirror_gutters"><code>CodeMirror-gutters</code></dt>
+      <dd>This is the backdrop for all gutters. Use it to set the
+      default gutter background color, and optionally add a border on
+      the right of the gutters.</dd>
 
-      <dt id="class_CodeMirror_gutter_text"><code>CodeMirror-gutter-text</code></dt>
-      <dd>Used to style the actual line numbers. For the numbers to
-      line up, you must make sure that the font in the gutter is the
-      same as the one in the rest of the editor, so you should
-      probably only set font style and size in
-      the <code>CodeMirror</code> class.</dd>
+      <dt id="class_CodeMirror_linenumbers"><code>CodeMirror-linenumbers</code></dt>
+      <dd>Use this for giving a background or width to the line number
+      gutter.</dd>
+
+      <dt id="class_CodeMirror_linenumber"><code>CodeMirror-linenumber</code></dt>
+      <dd>Used to style the actual individual line numbers. These
+      won't be children of the <code>CodeMirror-linenumbers</code>
+      (plural) element, but rather will be absolutely positioned to
+      overlay it. Use this to set alignment and text properties for
+      the line numbers.</dd>
 
       <dt id="class_CodeMirror_lines"><code>CodeMirror-lines</code></dt>
-      <dd>The visible lines. If this has vertical
-      padding, <code>CodeMirror-gutter</code> should have the same
-      padding.</dd>
+      <dd>The visible lines. This is where you specify vertical
+      padding for the editor content.</dd>
 
       <dt id="class_CodeMirror_cursor"><code>CodeMirror-cursor</code></dt>
       <dd>The cursor is a block element that is absolutely positioned.
@@ -453,13 +489,6 @@
         <code>CodeMirror-nonmatchingbracket</code></dt>
       <dd>These are used to style matched (or unmatched) brackets.</dd>
     </dl>
-
-    <p id="css-resize">So note carefully that, in order to resize the
-    editor, you should set a <code>width</code> on
-    the <a href="#getWrapperElement">wrapper</a>
-    (class <code>CodeMirror</code>) element, and a height on
-    the <a href="#getScrollerElement">scroller</a>
-    (class <code>CodeMirror-scroll</code>) element.</p>
 
     <p>The actual lines, as well as the cursor, are represented
     by <code>pre</code> elements. By default no text styling (such as
@@ -521,7 +550,7 @@
       arguments may be left as <code>null</code>
       or <code>undefined</code> to have no effect.</dd>
       <dt id="getScrollInfo"><code>getScrollInfo()</code></dt>
-      <dd>Get an <code>{x, y, width, height}</code> object that
+      <dd>Get an <code>{left, top, width, height}</code> object that
       represents the current scroll position and scrollable area size
       of the editor.</dd>
 
@@ -534,21 +563,36 @@
       <dd>Retrieves the current value of the given option for this
       editor instance.</dd>
 
+      <dt id="connect"><code>connect(type, func)</code></dt>
+      <dd>Register an event handler for the given event type (a
+      string) on the editor instance. There is also
+      a <code>CodeMirror.connect(object, type, func)</code> version
+      that allows registering of events on any object.</dd>
+      <dt id="disconnect"><code>disconnect(type, func)</code></dt>
+      <dd>Remove an event handler on the editor instance. An
+      equivalent <code>CodeMirror.disconnect(object, type,
+      func)</code> also exists.</dd>
+
       <dt id="cursorCoords"><code>cursorCoords(start, mode) → object</code></dt>
-      <dd>Returns an <code>{x, y, yBot}</code> object containing the
-      coordinates of the cursor. If <code>mode</code>
-      is <code>"local"</code>, they will be relative to the top-left
-      corner of the editable document. If it is <code>"page"</code> or
-      not given, they are relative to the top-left corner of the
-      page. <code>yBot</code> is the coordinate of the bottom of the
-      cursor. <code>start</code> is a boolean indicating whether you
-      want the start or the end of the selection.</dd>
+      <dd>Returns an <code>{left, top, bottom}</code> object
+      containing the coordinates of the cursor position.
+      If <code>mode</code> is <code>"local"</code>, they will be
+      relative to the top-left corner of the editable document. If it
+      is <code>"page"</code> or not given, they are relative to the
+      top-left corner of the page. <code>bottom</code> is the
+      coordinate of the bottom of the cursor. <code>start</code> is a
+      boolean indicating whether you want the start or the end of the
+      selection, or, if a <code>{line, ch}</code> object is given, it
+      specifies the precise position at which you want to measure.</dd>
       <dt id="charCoords"><code>charCoords(pos, mode) → object</code></dt>
       <dd>Like <code>cursorCoords</code>, but returns the position of
       an arbitrary characters. <code>pos</code> should be
-      a <code>{line, ch}</code> object.</dd>
+      a <code>{line, ch}</code> object. This differs
+      from <code>cursorCoords</code> in that it'll give the size of
+      the whole character, rather than just the position that the
+      cursor would have when it would sit at that position.</dd>
       <dt id="coordsChar"><code>coordsChar(object) → pos</code></dt>
-      <dd>Given an <code>{x, y}</code> object (in page coordinates),
+      <dd>Given an <code>{left, top}</code> object (in page coordinates),
       returns the <code>{line, ch}</code> position that corresponds to
       it.</dd>
 
@@ -613,25 +657,19 @@
       <dd>Returns an array of all the bookmarks and marked ranges
       present at the given position.</dd>
 
-      <dt id="setMarker"><code>setMarker(line, text, className) → lineHandle</code></dt>
-      <dd>Add a gutter marker for the given line. Gutter markers are
-      shown in the line-number area (instead of the number for this
-      line). Both <code>text</code> and <code>className</code> are
-      optional. Setting <code>text</code> to a Unicode character like
-      ● tends to give a nice effect. To put a picture in the gutter,
-      set <code>text</code> to a space and <code>className</code> to
-      something that sets a background image. If you
-      specify <code>text</code>, the given text (which may contain
-      HTML) will, by default, replace the line number for that line.
-      If this is not what you want, you can include the
-      string <code>%N%</code> in the text, which will be replaced by
-      the line number.</dd>
-      <dt id="clearMarker"><code>clearMarker(line)</code></dt>
-      <dd>Clears a marker created
-      with <code>setMarker</code>. <code>line</code> can be either a
-      number or a handle returned by <code>setMarker</code> (since a
-      number may now refer to a different line if something was added
-      or deleted).</dd>
+      <dt id="setGutterMarker"><code>setGutterMarker(line, gutterID, value) → lineHandle</code></dt>
+      <dd>Sets the gutter marker for the given gutter (identified by
+      its CSS class, see
+      the <a href="#option_gutters"><code>gutters</code></a> option)
+      to the given value. Value can be either <code>null</code>, to
+      clear the marker, or a DOM element, to set it. The DOM element
+      will be shown in the specified gutter next to the specified
+      line.</dd>
+      
+      <dt id="clearGutter"><code>clearGutter(gutterID)</code></dt>
+      <dd>Remove all gutter markers in
+      the <a href="#option_gutters">gutter</a> with the given ID.</dd>
+
       <dt id="setLineClass"><code>setLineClass(line, className, backgroundClassName) → lineHandle</code></dt>
       <dd>Set a CSS class name for the given line. <code>line</code>
       can be a number or a line handle (as returned
@@ -640,26 +678,31 @@
       for the line, and <code>backgroundClassName</code> to style its
       background (which lies behind the selection).
       Pass <code>null</code> to clear the classes for a line.</dd>
-      <dt id="hideLine"><code>hideLine(line) → lineHandle</code></dt>
-      <dd>Hide the given line (either by number or by handle). Hidden
-      lines don't show up in the editor, and their numbers are skipped
-      when <a href="#option_lineNumbers">line numbers</a> are enabled.
-      Deleting a region around them does delete them, and coping a
-      region around will include them in the copied text.</dd>
-      <dt id="showLine"><code>showLine(line) → lineHandle</code></dt>
-      <dd>The inverse of <code>hideLine</code>—re-shows a previously
-      hidden line, by number or by handle.</dd>
 
-      <dt id="onDeleteLine"><code>onDeleteLine(line, func)</code></dt>
-      <dd>Register a function that should be called when the line is
-      deleted from the document.</dd>
+      <dt id="foldLines"><code>foldLines(from, to, unfoldOnEnter) → foldHandle</code></dt>
+      <dd>Hide the given range of lines (<code>to</code> is
+      non-inclusive). Hidden lines don't show up in the editor.
+      Deleting a region around them does delete them, and copying a
+      region around will include them in the copied text. Vertical
+      cursor movement will skip hidden lines.
+      When <code>unfoldOnEnter</code> is true, horizontal movement
+      into the range will un-hide the range. When it is false,
+      horizonal cursor movement will skip it as if it isn't there. The
+      handle this function returns can be used to unfold the range,
+      and emits an <a href="#event_unfold"><code>unfold</code></a>
+      event when unfolded. Folded ranges may overlap and nest.</dd>
+      <dt id="unfoldLines"><code>unfoldLines(foldHandle)</code></dt>
+      <dd>When given a handle as returned
+      by <a href="#foldLines"><code>foldLines</code></a>, this will
+      unfold that range of lines.</dd>
 
       <dt id="lineInfo"><code>lineInfo(line) → object</code></dt>
       <dd>Returns the line number, text content, and marker status of
       the given line, which can be either a number or a handle
       returned by <code>setMarker</code>. The returned object has the
-      structure <code>{line, handle, text, markerText, markerClass,
-      lineClass, bgClass}</code>.</dd>
+      structure <code>{line, handle, text, gutterMarkers, lineClass,
+      bgClass}</code>, where <code>gutterMarkers</code> is an object
+      mapping gutter IDs to marker elements.</dd>
 
       <dt id="getLineHandle"><code>getLineHandle(num) → lineHandle</code></dt>
       <dd>Fetches the line handle for the given line number.</dd>
@@ -670,8 +713,8 @@
       part of the document. In big documents, when most content is
       scrolled out of view, CodeMirror will only render the visible
       part, and a margin around it. See also
-      the <a href="#option_onViewportChange"><code>onViewportChange</code></a>
-      option.</dd>
+      the <a href="#event_viewportChange"><code>viewportChange</code></a>
+      event.</dd>
 
       <dt id="addWidget"><code>addWidget(pos, node, scrollIntoView)</code></dt>
       <dd>Puts <code>node</code>, which should be an absolutely
@@ -681,9 +724,6 @@
       that the entire node is visible (if possible). To remove the
       widget again, simply use DOM methods (move it somewhere else, or
       call <code>removeChild</code> on its parent).</dd>
-
-      <dt id="matchBrackets"><code>matchBrackets()</code></dt>
-      <dd>Force matching-bracket-highlighting to happen.</dd>
 
       <dt id="lineCount"><code>lineCount() → number</code></dt>
       <dd>Get the number of lines in the editor.</dd>
@@ -772,7 +812,7 @@
       the <a href="#refresh"><code>refresh</code></a> method
       afterwards.)</dd>
       <dt id="getGutterElement"><code>getGutterElement() → node</code></dt>
-      <dd>Fetches the DOM node that represents the editor gutter.</dd>
+      <dd>Fetches the DOM node that contains the editor gutters.</dd>
 
       <dt id="getStateAfter"><code>getStateAfter(line) → state</code></dt>
       <dd>Returns the mode's parser state, if any, at the end of the
@@ -808,6 +848,13 @@
     use <code>CodeMirror.defineExtension(name, value)</code>. This
     will cause the given value (usually a method) to be added to all
     CodeMirror instances created from then on.</p>
+
+    <p id="defineOption">Similarly, <code>CodeMirror.defineOption(name,
+    default, updateFunc)</code> can be used to define new options for
+    CodeMirror. The <code>updateFunc</code> will be called with the
+    editor instance and the new value when an editor is initialized,
+    and whenever the option is modified
+    through <a href="#setOption"><code>setOption</code></a>.</p>
 
     <h2 id="addons">Add-ons</h2>
 
@@ -859,6 +906,14 @@
       on <code>searchcursor.js</code>, and will make use
       of <a href="#util_dialog"><code>openDialog</code></a> when
       available to make prompting for search queries less ugly.</dd>
+      <dt id="util_matchbrackets"><a href="../lib/util/matchbrackets.js"><code>matchbrackets.js</code></a></dt>
+      <dd>Defines an option <code>matchBrackets</code> which, when set
+      to true, causes matching brackets to be highlighted whenever the
+      cursor is next to them. It also adds a
+      method <code>matchBrackets</code> that forces this to happen
+      once, and a method <code>findMatchingBracket</code> that can be
+      used to run the bracket-finding algorithm that this uses
+      internally.</dd>
       <dt id="util_foldcode"><a href="../lib/util/foldcode.js"><code>foldcode.js</code></a></dt>
       <dd>Helps with code folding.
       See <a href="../demo/folding.html">the demo</a> for an example.
@@ -924,7 +979,7 @@
       <dt id="util_match-highlighter"><a href="../lib/util/match-highlighter.js"><code>match-highlighter.js</code></a></dt>
       <dd>Adds a <code>matchHighlight</code> method to CodeMirror
       instances that can be called (typically from
-      a <a href="#option_onCursorActivity"><code>onCursorActivity</code></a>
+      a <a href="#event_cursorActivity"><code>cursorActivity</code></a>
       handler) to highlight all instances of a currently selected word
       with the a classname given as a first argument to the method.
       Depends on
@@ -1085,18 +1140,6 @@
     which is given a state and should return a safe copy of that
     state.</p>
 
-    <p id="compareStates">By default, CodeMirror will stop re-parsing
-    a document as soon as it encounters a few lines that were
-    highlighted the same in the old parse as in the new one. It is
-    possible to provide an explicit way to test whether a state is
-    equivalent to another one, which CodeMirror will use (instead of
-    the unchanged-lines heuristic) to decide when to stop
-    highlighting. You do this by providing
-    a <code>compareStates</code> method on your mode object, which
-    takes two state arguments and returns a boolean indicating whether
-    they are equivalent. See the XML mode, which uses this to provide
-    reliable highlighting of bad closing tags, as an example.</p>
-
     <p id="indent">If you want your mode to provide smart indentation
     (though the <a href="#indentLine"><code>indentLine</code></a>
     method and the <code>indentAuto</code>
@@ -1168,6 +1211,7 @@
       <li><a href="#overview">Overview</a></li>
       <li><a href="#usage">Basic Usage</a></li>
       <li><a href="#config">Configuration</a></li>
+      <li><a href="#events">Events</a></li>
       <li><a href="#keymaps">Keymaps</a></li>
       <li><a href="#styling">Customized Styling</a></li>
       <li><a href="#api">Programming API</a></li>
