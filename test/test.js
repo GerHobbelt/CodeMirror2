@@ -25,7 +25,7 @@ function byClassName(elt, cls) {
 var ie_lt8 = /MSIE [1-7]\b/.test(navigator.userAgent);
 var phantom = /PhantomJS/.test(navigator.userAgent);
 
-test("fromTextArea", function() {
+test("core_fromTextArea", function() {
   var te = document.getElementById("code");
   te.value = "CONTENT";
   var cm = CodeMirror.fromTextArea(te);
@@ -109,7 +109,7 @@ testCM("indent", function(cm) {
   eq(cm.getLine(1), "\t\t  blah();");
 }, {value: "if (x) {\nblah();\n}", indentUnit: 3, indentWithTabs: true, tabSize: 8});
 
-test("defaults", function() {
+test("core_defaults", function() {
   var olddefaults = CodeMirror.defaults, defs = CodeMirror.defaults = {};
   for (var opt in olddefaults) defs[opt] = olddefaults[opt];
   defs.indentUnit = 5;
@@ -424,7 +424,7 @@ testCM("setSize", function(cm) {
 testCM("hiddenLines", function(cm) {
   addDoc(cm, 4, 10);
   var folded = cm.foldLines(4, 5), unfolded = 0;
-  CodeMirror.connect(folded, "unfold", function() {unfolded++;});
+  CodeMirror.on(folded, "unfold", function() {unfolded++;});
   cm.setCursor({line: 3, ch: 0});
   CodeMirror.commands.goLineDown(cm);
   eqPos(cm.getCursor(), {line: 5, ch: 0});
@@ -442,13 +442,13 @@ testCM("hiddenLines", function(cm) {
 
 testCM("hiddenLinesAutoUnfold", function(cm) {
   var folded = cm.foldLines(1, 3, true), unfolded = 0;
-  CodeMirror.connect(folded, "unfold", function() {unfolded++;});
+  CodeMirror.on(folded, "unfold", function() {unfolded++;});
   cm.setCursor({line: 3, ch: 0});
   eq(unfolded, 0);
   cm.execCommand("goCharLeft");
   eq(unfolded, 1);
   var folded = cm.foldLines(1, 3, true), unfolded = 0;
-  CodeMirror.connect(folded, "unfold", function() {unfolded++;});
+  CodeMirror.on(folded, "unfold", function() {unfolded++;});
   eqPos(cm.getCursor(), {line: 3, ch: 0});
   cm.setCursor({line: 0, ch: 3});
   cm.execCommand("goCharRight");
@@ -718,10 +718,10 @@ testCM("lineChangeEvents", function(cm) {
   addDoc(cm, 3, 5);
   var log = [], want = ["ch 0", "ch 1", "del 2", "ch 0", "ch 0", "del 1", "del 3", "del 4"];
   for (var i = 0; i < 5; ++i) {
-    CodeMirror.connect(cm.getLineHandle(i), "delete", function(i) {
+    CodeMirror.on(cm.getLineHandle(i), "delete", function(i) {
       return function() {log.push("del " + i);};
     }(i));
-    CodeMirror.connect(cm.getLineHandle(i), "change", function(i) {
+    CodeMirror.on(cm.getLineHandle(i), "change", function(i) {
       return function() {log.push("ch " + i);};
     }(i));
   }
@@ -739,4 +739,28 @@ testCM("scrollEntirelyToRight", function(cm) {
   cm.setCursor({line: 0, ch: 500});
   var wrap = cm.getWrapperElement(), cur = byClassName(wrap, "CodeMirror-cursor")[0];
   is(wrap.getBoundingClientRect().right > cur.getBoundingClientRect().left);
+});
+
+testCM("lineWidgets", function(cm) {
+  addDoc(cm, 500, 3);
+  var last = cm.charCoords({line: 2, ch: 0});
+  var node = document.createElement("div");
+  node.innerHTML = "hi";
+  var widget = cm.addLineWidget(1, node);
+  is(last.top < cm.charCoords({line: 2, ch: 0}).top, "took up space");
+  cm.setCursor({line: 1, ch: 1});
+  cm.execCommand("goLineDown");
+  eqPos(cm.getCursor(), {line: 2, ch: 1});
+  cm.execCommand("goLineUp");
+  eqPos(cm.getCursor(), {line: 1, ch: 1});
+});
+
+testCM("getLineNumber", function(cm) {
+  addDoc(cm, 2, 20);
+  var h1 = cm.getLineHandle(1);
+  eq(cm.getLineNumber(h1), 1);
+  cm.replaceRange("hi\nbye\n", {line: 0, ch: 0});
+  eq(cm.getLineNumber(h1), 3);
+  cm.setValue("");
+  eq(cm.getLineNumber(h1), null);
 });
