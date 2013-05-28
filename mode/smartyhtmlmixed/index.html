@@ -8,9 +8,9 @@
 	<script src="../javascript/javascript.js"></script>
 	<script src="../css/css.js"></script>
 	<script src="../smarty/smarty.js"></script>
-	<script src="smartymixed.js"></script>
+	<script src="smartyhtmlmixed.js"></script>
 	<link rel="stylesheet" href="../../doc/docs.css">
-	<link rel="stylesheet" href="smartymixed.css">
+	<link rel="stylesheet" href="smartyhtmlmixed.css">
 	<style>.CodeMirror {border-top: 1px solid black; border-bottom: 1px solid black;}</style>
 </head>
 <body>
@@ -22,18 +22,24 @@
 <html>
 <head>
 	<title>HTML example</title>
+	<style type="text/css">
+	.something {
+		color: pink;
+	}
+	</style>
 </head>
 <body>
-	{$smarty}
+	<script>
+		var chicken = "1";
+	</script>
+	{smarty var="luckysod"}
 </body>
 </html>
 </textarea></form>
 
 <script>
 	var editor = CodeMirror.fromTextArea(document.getElementById("code"), {
-		mode: {
-			name: "smartyhtmlmixed"
-		},
+		mode: "smartyhtmlmixed",
 		lineNumbers: true
 	});
 </script>
