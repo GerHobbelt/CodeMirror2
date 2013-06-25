@@ -89,6 +89,43 @@ testCM("selection", function(cm) {
   eqPos(cm.getCursor(true), {line: 1, ch: 2});
 }, {value: "111111\n222222\n333333"});
 
+testCM("extendSelection", function(cm) {
+  cm.setExtending(true);
+  addDoc(cm, 10, 10);
+  cm.setSelection({line: 3, ch: 5});
+  eqPos(cm.getCursor("head"), {line: 3, ch: 5});
+  eqPos(cm.getCursor("anchor"), {line: 3, ch: 5});
+  cm.setSelection({line: 2, ch: 5}, {line: 5, ch: 5});
+  eqPos(cm.getCursor("head"), {line: 5, ch: 5});
+  eqPos(cm.getCursor("anchor"), {line: 2, ch: 5});
+  eqPos(cm.getCursor("start"), {line: 2, ch: 5});
+  eqPos(cm.getCursor("end"), {line: 5, ch: 5});
+  cm.setSelection({line: 5, ch: 5}, {line: 2, ch: 5});
+  eqPos(cm.getCursor("head"), {line: 2, ch: 5});
+  eqPos(cm.getCursor("anchor"), {line: 5, ch: 5});
+  eqPos(cm.getCursor("start"), {line: 2, ch: 5});
+  eqPos(cm.getCursor("end"), {line: 5, ch: 5});
+  cm.extendSelection({line: 3, ch: 2});
+  eqPos(cm.getCursor("head"), {line: 3, ch: 2});
+  eqPos(cm.getCursor("anchor"), {line: 5, ch: 5});
+  cm.extendSelection({line: 6, ch: 2});
+  eqPos(cm.getCursor("head"), {line: 6, ch: 2});
+  eqPos(cm.getCursor("anchor"), {line: 5, ch: 5});
+  cm.extendSelection({line: 6, ch: 3}, {line: 6, ch: 4});
+  eqPos(cm.getCursor("head"), {line: 6, ch: 4});
+  eqPos(cm.getCursor("anchor"), {line: 5, ch: 5});
+  cm.extendSelection({line: 0, ch: 3}, {line: 0, ch: 4});
+  eqPos(cm.getCursor("head"), {line: 0, ch: 3});
+  eqPos(cm.getCursor("anchor"), {line: 5, ch: 5});
+  cm.extendSelection({line: 4, ch: 5}, {line: 6, ch: 5});
+  eqPos(cm.getCursor("head"), {line: 6, ch: 5});
+  eqPos(cm.getCursor("anchor"), {line: 4, ch: 5});
+  cm.setExtending(false);
+  cm.extendSelection({line: 0, ch: 3}, {line: 0, ch: 4});
+  eqPos(cm.getCursor("head"), {line: 0, ch: 4});
+  eqPos(cm.getCursor("anchor"), {line: 0, ch: 3});
+});
+
 testCM("lines", function(cm) {
   eq(cm.getLine(0), "111111");
   eq(cm.getLine(1), "222222");
@@ -1096,3 +1133,35 @@ testCM("dirtyBit", function(cm) {
   cm.redo();
   eq(cm.isClean(), true);
 });
+
+testCM("addKeyMap", function(cm) {
+  function sendKey(code) {
+    cm.triggerOnKeyDown({type: "keydown", keyCode: code,
+                         preventDefault: function(){}, stopPropagation: function(){}});
+  }
+
+  sendKey(39);
+  eqPos(cm.getCursor(), {line: 0, ch: 1});
+  var test = 0;
+  var map1 = {Right: function() { ++test; }}, map2 = {Right: function() { test += 10; }}
+  cm.addKeyMap(map1);
+  sendKey(39);
+  eqPos(cm.getCursor(), {line: 0, ch: 1});
+  eq(test, 1);
+  cm.addKeyMap(map2);
+  sendKey(39);
+  eq(test, 2);
+  cm.removeKeyMap(map1);
+  sendKey(39);
+  eq(test, 12);
+  cm.removeKeyMap(map2);
+  sendKey(39);
+  eq(test, 12);
+  eqPos(cm.getCursor(), {line: 0, ch: 2});
+  cm.addKeyMap({Right: function() { test = 55; }, name: "mymap"});
+  sendKey(39);
+  eq(test, 55);
+  cm.removeKeyMap("mymap");
+  sendKey(39);
+  eqPos(cm.getCursor(), {line: 0, ch: 3});
+}, {value: "abc"});
