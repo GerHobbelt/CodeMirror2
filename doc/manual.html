@@ -352,7 +352,7 @@
     <dl>
       <dt id="event_change"><code>"change" (instance, changeObj)</code></dt>
       <dd>Fires every time the content of the editor is changed.
-      The <code>changeObj</code> is a <code>{from, to, text,
+      The <code>changeObj</code> is a <code>{from, to, text, removed,
       next}</code> object containing information about the changes
       that occurred as second argument. <code>from</code>
       and <code>to</code> are the positions (in the pre-change
@@ -360,8 +360,10 @@
       example, it might be <code>{ch:0, line:18}</code> if the
       position is at the beginning of line #19). <code>text</code> is
       an array of strings representing the text that replaced the
-      changed range (split by line). If multiple changes happened
-      during a single operation, the object will have
+      changed range (split by line). <code>removed</code> is the text
+      that used to be between <code>from</code> and <code>to</code>,
+      which is overwritten by this change. If multiple changes
+      happened during a single operation, the object will have
       a <code>next</code> property pointing to another change object
       (which may point to another, etc).</dd>
 
@@ -423,6 +425,13 @@
 
       <dt id="event_update"><code>"update" (instance)</code></dt>
       <dd>Will be fired whenever CodeMirror updates its DOM display.</dd>
+
+      <dt id="event_renderLine"><code>"renderLine" (instance, line, element)</code></dt>
+      <dd>Fired whenever a line is (re-)rendered to the DOM. Fired
+      right after the DOM element is built, <em>before</em> it is
+      added to the document. The handler may mess with the style of
+      the resulting element, or add event handlers, but
+      should <em>not</em> try to change the state of the editor.</dd>
     </dl>
 
     <p>It is also possible to <a href="#on">register</a> events on
@@ -466,9 +475,12 @@
       is associated with the <em>start</em> of the line. Mostly useful
       when you need to find out when your <a href="#setGutterMarker">gutter
       markers</a> on a given line are removed.</dd>
-      <dt id="event_line_change"><code>"change" ()</code></dt>
+      <dt id="event_line_change"><code>"change" (line, changeObj)</code></dt>
       <dd>Fires when the line's text content is changed in any way
-      (but the line is not deleted outright).</dd>
+      (but the line is not deleted outright). The <code>change</code>
+      object is similar to the one passed
+      to <a href="#event_change">change event</a> on the editor
+      object.</dd>
     </dl>
 
     <p>Marked range handles, as returned
@@ -477,6 +489,11 @@
     following events:</p>
 
     <dl>
+      <dt id="event_beforeCursorEnter"><code>"beforeCursorEnter" ()</code></dt>
+      <dd>Fired when the cursor enters the marked range. From this
+      event handler, the editor state may be inspected
+      but <em>not</em> modified, with the exception that the range on
+      which the event fires may be cleared.</dd>
       <dt id="event_clear"><code>"clear" ()</code></dt>
       <dd>Fired when the range is cleared, either through cursor
       movement in combination
@@ -522,6 +539,17 @@
     and <code>Alt-</code> (in that order!) to specify a modifier. So
     for example, <code>Shift-Ctrl-Space</code> would be a valid key
     identifier.</p>
+
+    <p>Common example: map the Tab key to insert spaces instead of a tab
+    character.</p>
+
+    <pre data-lang="javascript">
+{
+  Tab: function(cm) {
+    var spaces = Array(cm.getOption("indentUnit") + 1).join(" ");
+    cm.replaceSelection(spaces, "end", "+input");
+  }
+}</pre>
 
     <p>Alternatively, a character can be specified directly by
     surrounding it in single quotes, for example <code>'$'</code>
@@ -777,6 +805,9 @@
       to <a href="#extendSelection"><code>extendSelection</code></a>
       to leave the selection anchor in place.</dd>
 
+      <dt id="hasFocus"><code>cm.hasFocus() → bool</code></dt>
+      <dd>Tells you whether the editor currently has focus.</dd>
+
       <dt id="findPosH"><code>cm.findPosH(start, amount, unit, visually) → object</code></dt>
       <dd>Used to find the target position for horizontal cursor
       motion. <code>start</code> is a <code>{line, ch}</code>
@@ -810,16 +841,18 @@
       <dd>Retrieves the current value of the given option for this
       editor instance.</dd>
 
-      <dt id="addKeyMap"><code>cm.addKeyMap(map)</code></dt>
-      <dd>Attach an additional <a href="#keymaps">keymap</a> to the editor. This is mostly
-      useful for add-ons that need to register some key handlers
-      without trampling on
+      <dt id="addKeyMap"><code>cm.addKeyMap(map, bottom)</code></dt>
+      <dd>Attach an additional <a href="#keymaps">keymap</a> to the
+      editor. This is mostly useful for add-ons that need to register
+      some key handlers without trampling on
       the <a href="#option_extraKeys"><code>extraKeys</code></a>
-      option. Maps added in this way have a lower precedence
-      than <code>extraKeys</code>, a higher precedence than the
-      base <a href="#option_keyMap"><code>keyMap</code></a>, and
-      between them, the maps added earlier have a higher precedence
-      than those added later.</dd>
+      option. Maps added in this way have a higher precedence than
+      the <code>extraKeys</code>
+      and <a href="#option_keyMap"><code>keyMap</code></a> options,
+      and between them, the maps added earlier have a lower precedence
+      than those added later, unless the <code>bottom</code> argument
+      was passed, in which case they end up below other keymaps added
+      with this method.</dd>
       <dt id="removeKeyMap"><code>cm.removeKeyMap(map)</code></dt>
       <dd>Disable a keymap added
       with <a href="#addKeyMap"><code>addKeyMap</code></a>. Either
@@ -835,7 +868,7 @@
       searched. <code>mode</code> can be a <a href="#option_mode">mode
       spec</a> or a mode object (an object with
       a <a href="#token"><code>token</code></a> method).
-      The <code>option</code> parameter is optional. If given it
+      The <code>options</code> parameter is optional. If given, it
       should be an object. Currently, only the <code>opaque</code>
       option is recognized. This defaults to off, but can be given to
       allow the overlay styling, when not <code>null</code>, to
@@ -1159,12 +1192,14 @@
       clientHeight}</code> object that represents the current scroll
       position, the size of the scrollable area, and the size of the
       visible area (minus scrollbars).</dd>
-      <dt id="scrollIntoView"><code>cm.scrollIntoView(pos)</code></dt>
+      <dt id="scrollIntoView"><code>cm.scrollIntoView(pos, margin)</code></dt>
       <dd>Scrolls the given element into view. <code>pos</code> may be
       either a <code>{line, ch}</code> position, referring to a given
       character, <code>null</code>, to refer to the cursor, or
       a <code>{left, top, right, bottom}</code> object, in
-      editor-local coordinates.</dd>
+      editor-local coordinates. The <code>margin</code> parameter is
+      optional. When given, it indicates the amount of pixels around
+      the given area that should be made visible as well.</dd>
 
       <dt id="cursorCoords"><code>cm.cursorCoords(where, mode) → object</code></dt>
       <dd>Returns an <code>{left, top, bottom}</code> object
@@ -1184,12 +1219,20 @@
       it'll give the size of the whole character, rather than just the
       position that the cursor would have when it would sit at that
       position.</dd>
-      <dt id="coordsChar"><code>cm.coordsChar(object) → pos</code></dt>
-      <dd>Given an <code>{left, top}</code> object (in page coordinates),
-      returns the <code>{line, ch}</code> position that corresponds to
-      it.</dd>
+      <dt id="coordsChar"><code>cm.coordsChar(object, mode) → pos</code></dt>
+      <dd>Given an <code>{left, top}</code> object, returns
+      the <code>{line, ch}</code> position that corresponds to it. The
+      optional <code>mode</code> parameter determines relative to what
+      the coordinates are interpreted. It may
+      be <code>"window"</code>, <code>"page"</code> (the default),
+      or <code>"local"</code>.</dd>
       <dt id="defaultTextHeight"><code>cm.defaultTextHeight() → number</code></dt>
       <dd>Returns the line height of the default font for the editor.</dd>
+      <dt id="defaultCharWidth"><code>cm.defaultCharWidth() → number</code></dt>
+      <dd>Returns the pixel width of an 'x' in the default font for
+      the editor. (Note that for non-monospace fonts, this is mostly
+      useless, and even for monospace fonts, non-ascii characters
+      might have a different width).</dd>
 
       <dt id="getViewport"><code>cm.getViewport() → object</code></dt>
       <dd>Returns a <code>{from, to}</code> object indicating the
@@ -1210,7 +1253,7 @@
     <h3 id="api_mode">Mode, state, and token-related methods</h3>
 
     <p>When writing language-aware functionality, it can often be
-    useful to hook into the knowledge thate the CodeMirror language
+    useful to hook into the knowledge that the CodeMirror language
     mode has. See <a href="#modeapi">the section on modes</a> for a
     more detailed description of how these work.</p>
 
@@ -1423,19 +1466,15 @@
       a CodeMirror instance and a line number, attempt to fold or
       unfold the block starting at the given line. A range-finder is a
       language-specific function that also takes an instance and a
-      line number, and returns an range to be folded, or null if
-      no block is started on that line. This file
-      provides <code>CodeMirror.braceRangeFinder</code>, which finds
-      blocks in brace languages (JavaScript, C, Java,
+      line number, and returns an range to be folded, or null if no
+      block is started on that line. There are files in
+      the <a href="../addon/fold/"><code>addon/fold/</code></a>
+      directory providing <code>CodeMirror.braceRangeFinder</code>,
+      which finds blocks in brace languages (JavaScript, C, Java,
       etc), <code>CodeMirror.indentRangeFinder</code>, for languages
       where indentation determines block structure (Python, Haskell),
       and <code>CodeMirror.tagRangeFinder</code>, for XML-style
       languages.</dd>
-      <dt id="addon_collapserange"><a href="../addon/fold/collapserange.js"><code>fold/collapserange.js</code></a></dt>
-      <dd>Another approach to
-      folding. <a href="../demo/collapserange.html">See demo</a>.
-      Allows the user to select a range to fold by clicking in the
-      gutter.</dd>
       <dt id="addon_runmode"><a href="../addon/runmode/runmode.js"><code>runmode/runmode.js</code></a></dt>
       <dd>Can be used to run a CodeMirror mode over text without
       actually opening an editor instance.
@@ -1529,10 +1568,17 @@
       editor instance to refresh its mode when the loading
       succeeded. See the <a href="../demo/loadmode.html">demo</a>.</dd>
       <dt id="addon_continuecomment"><a href="../addon/edit/continuecomment.js"><code>edit/continuecomment.js</code></a></dt>
-      <dd>Adds a <a href="#commands">command</a>
-      called <code>newlineAndIndentContinueComment</code> that you can
-      bind <code>Enter</code> to in order to have the editor prefix
-      new lines inside C-like block comments with an asterisk.</dd>
+      <dd>Adds an <code>continueComments</code> option, which can be
+      set to true to have the editor prefix new lines inside C-like
+      block comments with an asterisk when Enter is pressed. It can
+      also be set to a string in order to bind this functionality to a
+      specific key..</dd>
+      <dt id="addon_placeholder"><a href="../addon/display/placeholder.js"><code>display/placeholder.js</code></a></dt>
+      <dd>Adds a <code>placeholder</code> option that can be used to
+      make text appear in the editor when it is empty and not focused.
+      Also gives the editor a <code>CodeMirror-empty</code> CSS class
+      whenever it doesn't contain any text.
+      See <a href="../demo/placeholder.html">the demo</a>.</dd>
     </dl>
 
     <h2 id="modeapi">Writing CodeMirror Modes</h2>
@@ -1723,11 +1769,10 @@
     extra methods, <code>innerMode</code> which, given a state object,
     returns a <code>{state, mode}</code> object with the inner mode
     and its state for the current position. These are used by utility
-    scripts such as the <a href="#addon_formatting">autoformatter</a>
-    and the <a href="#addon_closetag">tag closer</a> to get context
-    information. Use the <code>CodeMirror.innerMode</code> helper
-    function to, starting from a mode and a state, recursively walk
-    down to the innermost mode and state.</p>
+    scripts such as the <a href="#addon_closetag">tag closer</a> to
+    get context information. Use the <code>CodeMirror.innerMode</code>
+    helper function to, starting from a mode and a state, recursively
+    walk down to the innermost mode and state.</p>
 
     <p>To make indentation work properly in a nested parser, it is
     advisable to give the <code>startState</code> method of modes that

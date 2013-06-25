@@ -54,7 +54,8 @@ var bigWord3 = {
 var bigWord4 = {
   start: { line: bigWordLine.line, ch: bigWord1.end.ch + 3 },
   end: { line: bigWordLine.line, ch: bigWord1.end.ch + 7 }
-}
+};
+
 var oChars = [ { line: charLine.line, ch: 1 },
     { line: charLine.line, ch: 3 },
     { line: charLine.line, ch: 7 } ];
@@ -225,6 +226,9 @@ testMotion('G_repeat', ['3', 'G'], makeCursor(lines[2].line,
 // TODO: Make the test code long enough to test Ctrl-F and Ctrl-B.
 testMotion('0', '0', makeCursor(0, 0), makeCursor(0, 8));
 testMotion('^', '^', makeCursor(0, lines[0].textStart), makeCursor(0, 8));
+testMotion('+', '+', makeCursor(1, lines[1].textStart), makeCursor(0, 8));
+testMotion('-', '-', makeCursor(0, lines[0].textStart), makeCursor(1, 4));
+testMotion('_', ['6','_'], makeCursor(5, lines[5].textStart), makeCursor(0, 8));
 testMotion('$', '$', makeCursor(0, lines[0].length - 1), makeCursor(0, 1));
 testMotion('$_repeat', ['2', '$'], makeCursor(1, lines[1].length - 1),
     makeCursor(0, 3));
@@ -793,9 +797,12 @@ testVim('P_line', function(cm, vim, helpers) {
 testVim('r', function(cm, vim, helpers) {
   cm.setCursor(0, 1);
   helpers.doKeys('3', 'r', 'u');
-  eq('wuuuet', cm.getValue());
+  eq('wuuuet\nanother', cm.getValue(),'3r failed');
   helpers.assertCursorAt(0, 3);
-}, { value: 'wordet' });
+  cm.setCursor(0, 4);
+  helpers.doKeys('v', 'j', 'h', 'r', 'Space');
+  eq('wuuu  \n    her', cm.getValue(),'Replacing selection by space-characters failed');
+}, { value: 'wordet\nanother' });
 testVim('mark', function(cm, vim, helpers) {
   cm.setCursor(2, 2);
   helpers.doKeys('m', 't');
@@ -805,6 +812,242 @@ testVim('mark', function(cm, vim, helpers) {
   cm.setCursor(0, 0);
   helpers.doKeys('`', 't');
   helpers.assertCursorAt(2, 2);
+});
+testVim('jumpToMark_next', function(cm, vim, helpers) {
+  cm.setCursor(2, 2);
+  helpers.doKeys('m', 't');
+  cm.setCursor(0, 0);
+  helpers.doKeys(']', '`');
+  helpers.assertCursorAt(2, 2);
+  cm.setCursor(0, 0);
+  helpers.doKeys(']', '\'');
+  helpers.assertCursorAt(2, 0);
+});
+testVim('jumpToMark_next_repeat', function(cm, vim, helpers) {
+  cm.setCursor(2, 2);
+  helpers.doKeys('m', 'a');
+  cm.setCursor(3, 2);
+  helpers.doKeys('m', 'b');
+  cm.setCursor(4, 2);
+  helpers.doKeys('m', 'c');
+  cm.setCursor(0, 0);
+  helpers.doKeys('2', ']', '`');
+  helpers.assertCursorAt(3, 2);
+  cm.setCursor(0, 0);
+  helpers.doKeys('2', ']', '\'');
+  helpers.assertCursorAt(3, 1);
+});
+testVim('jumpToMark_next_sameline', function(cm, vim, helpers) {
+  cm.setCursor(2, 0);
+  helpers.doKeys('m', 'a');
+  cm.setCursor(2, 4);
+  helpers.doKeys('m', 'b');
+  cm.setCursor(2, 2);
+  helpers.doKeys(']', '`');
+  helpers.assertCursorAt(2, 4);
+});
+testVim('jumpToMark_next_onlyprev', function(cm, vim, helpers) {
+  cm.setCursor(2, 0);
+  helpers.doKeys('m', 'a');
+  cm.setCursor(4, 0);
+  helpers.doKeys(']', '`');
+  helpers.assertCursorAt(4, 0);
+});
+testVim('jumpToMark_next_nomark', function(cm, vim, helpers) {
+  cm.setCursor(2, 2);
+  helpers.doKeys(']', '`');
+  helpers.assertCursorAt(2, 2);
+  helpers.doKeys(']', '\'');
+  helpers.assertCursorAt(2, 0);
+});
+testVim('jumpToMark_next_linewise_over', function(cm, vim, helpers) {
+  cm.setCursor(2, 2);
+  helpers.doKeys('m', 'a');
+  cm.setCursor(3, 4);
+  helpers.doKeys('m', 'b');
+  cm.setCursor(2, 1);
+  helpers.doKeys(']', '\'');
+  helpers.assertCursorAt(3, 1);
+});
+testVim('jumpToMark_next_action', function(cm, vim, helpers) {
+  cm.setCursor(2, 2);
+  helpers.doKeys('m', 't');
+  cm.setCursor(0, 0);
+  helpers.doKeys('d', ']', '`');
+  helpers.assertCursorAt(0, 0);
+  var actual = cm.getLine(0);
+  var expected = 'pop pop 0 1 2 3 4';
+  eq(actual, expected, "Deleting while jumping to the next mark failed.");
+});
+testVim('jumpToMark_next_line_action', function(cm, vim, helpers) {
+  cm.setCursor(2, 2);
+  helpers.doKeys('m', 't');
+  cm.setCursor(0, 0);
+  helpers.doKeys('d', ']', '\'');
+  helpers.assertCursorAt(0, 1);
+  var actual = cm.getLine(0);
+  var expected = ' (a) [b] {c} '
+  eq(actual, expected, "Deleting while jumping to the next mark line failed.");
+});
+testVim('jumpToMark_prev', function(cm, vim, helpers) {
+  cm.setCursor(2, 2);
+  helpers.doKeys('m', 't');
+  cm.setCursor(4, 0);
+  helpers.doKeys('[', '`');
+  helpers.assertCursorAt(2, 2);
+  cm.setCursor(4, 0);
+  helpers.doKeys('[', '\'');
+  helpers.assertCursorAt(2, 0);
+});
+testVim('jumpToMark_prev_repeat', function(cm, vim, helpers) {
+  cm.setCursor(2, 2);
+  helpers.doKeys('m', 'a');
+  cm.setCursor(3, 2);
+  helpers.doKeys('m', 'b');
+  cm.setCursor(4, 2);
+  helpers.doKeys('m', 'c');
+  cm.setCursor(5, 0);
+  helpers.doKeys('2', '[', '`');
+  helpers.assertCursorAt(3, 2);
+  cm.setCursor(5, 0);
+  helpers.doKeys('2', '[', '\'');
+  helpers.assertCursorAt(3, 1);
+});
+testVim('jumpToMark_prev_sameline', function(cm, vim, helpers) {
+  cm.setCursor(2, 0);
+  helpers.doKeys('m', 'a');
+  cm.setCursor(2, 4);
+  helpers.doKeys('m', 'b');
+  cm.setCursor(2, 2);
+  helpers.doKeys('[', '`');
+  helpers.assertCursorAt(2, 0);
+});
+testVim('jumpToMark_prev_onlynext', function(cm, vim, helpers) {
+  cm.setCursor(4, 4);
+  helpers.doKeys('m', 'a');
+  cm.setCursor(2, 0);
+  helpers.doKeys('[', '`');
+  helpers.assertCursorAt(2, 0);
+});
+testVim('jumpToMark_prev_nomark', function(cm, vim, helpers) {
+  cm.setCursor(2, 2);
+  helpers.doKeys('[', '`');
+  helpers.assertCursorAt(2, 2);
+  helpers.doKeys('[', '\'');
+  helpers.assertCursorAt(2, 0);
+});
+testVim('jumpToMark_prev_linewise_over', function(cm, vim, helpers) {
+  cm.setCursor(2, 2);
+  helpers.doKeys('m', 'a');
+  cm.setCursor(3, 4);
+  helpers.doKeys('m', 'b');
+  cm.setCursor(3, 6);
+  helpers.doKeys('[', '\'');
+  helpers.assertCursorAt(2, 0);
+});
+testVim('delmark_single', function(cm, vim, helpers) {
+  cm.setCursor(1, 2);
+  helpers.doKeys('m', 't');
+  helpers.doEx('delmarks t');
+  cm.setCursor(0, 0);
+  helpers.doKeys('`', 't');
+  helpers.assertCursorAt(0, 0);
+});
+testVim('delmark_range', function(cm, vim, helpers) {
+  cm.setCursor(1, 2);
+  helpers.doKeys('m', 'a');
+  cm.setCursor(2, 2);
+  helpers.doKeys('m', 'b');
+  cm.setCursor(3, 2);
+  helpers.doKeys('m', 'c');
+  cm.setCursor(4, 2);
+  helpers.doKeys('m', 'd');
+  cm.setCursor(5, 2);
+  helpers.doKeys('m', 'e');
+  helpers.doEx('delmarks b-d');
+  cm.setCursor(0, 0);
+  helpers.doKeys('`', 'a');
+  helpers.assertCursorAt(1, 2);
+  helpers.doKeys('`', 'b');
+  helpers.assertCursorAt(1, 2);
+  helpers.doKeys('`', 'c');
+  helpers.assertCursorAt(1, 2);
+  helpers.doKeys('`', 'd');
+  helpers.assertCursorAt(1, 2);
+  helpers.doKeys('`', 'e');
+  helpers.assertCursorAt(5, 2);
+});
+testVim('delmark_multi', function(cm, vim, helpers) {
+  cm.setCursor(1, 2);
+  helpers.doKeys('m', 'a');
+  cm.setCursor(2, 2);
+  helpers.doKeys('m', 'b');
+  cm.setCursor(3, 2);
+  helpers.doKeys('m', 'c');
+  cm.setCursor(4, 2);
+  helpers.doKeys('m', 'd');
+  cm.setCursor(5, 2);
+  helpers.doKeys('m', 'e');
+  helpers.doEx('delmarks bcd');
+  cm.setCursor(0, 0);
+  helpers.doKeys('`', 'a');
+  helpers.assertCursorAt(1, 2);
+  helpers.doKeys('`', 'b');
+  helpers.assertCursorAt(1, 2);
+  helpers.doKeys('`', 'c');
+  helpers.assertCursorAt(1, 2);
+  helpers.doKeys('`', 'd');
+  helpers.assertCursorAt(1, 2);
+  helpers.doKeys('`', 'e');
+  helpers.assertCursorAt(5, 2);
+});
+testVim('delmark_multi_space', function(cm, vim, helpers) {
+  cm.setCursor(1, 2);
+  helpers.doKeys('m', 'a');
+  cm.setCursor(2, 2);
+  helpers.doKeys('m', 'b');
+  cm.setCursor(3, 2);
+  helpers.doKeys('m', 'c');
+  cm.setCursor(4, 2);
+  helpers.doKeys('m', 'd');
+  cm.setCursor(5, 2);
+  helpers.doKeys('m', 'e');
+  helpers.doEx('delmarks b c d');
+  cm.setCursor(0, 0);
+  helpers.doKeys('`', 'a');
+  helpers.assertCursorAt(1, 2);
+  helpers.doKeys('`', 'b');
+  helpers.assertCursorAt(1, 2);
+  helpers.doKeys('`', 'c');
+  helpers.assertCursorAt(1, 2);
+  helpers.doKeys('`', 'd');
+  helpers.assertCursorAt(1, 2);
+  helpers.doKeys('`', 'e');
+  helpers.assertCursorAt(5, 2);
+});
+testVim('delmark_all', function(cm, vim, helpers) {
+  cm.setCursor(1, 2);
+  helpers.doKeys('m', 'a');
+  cm.setCursor(2, 2);
+  helpers.doKeys('m', 'b');
+  cm.setCursor(3, 2);
+  helpers.doKeys('m', 'c');
+  cm.setCursor(4, 2);
+  helpers.doKeys('m', 'd');
+  cm.setCursor(5, 2);
+  helpers.doKeys('m', 'e');
+  helpers.doEx('delmarks a b-de');
+  cm.setCursor(0, 0);
+  helpers.doKeys('`', 'a');
+  helpers.assertCursorAt(0, 0);
+  helpers.doKeys('`', 'b');
+  helpers.assertCursorAt(0, 0);
+  helpers.doKeys('`', 'c');
+  helpers.assertCursorAt(0, 0);
+  helpers.doKeys('`', 'd');
+  helpers.assertCursorAt(0, 0);
+  helpers.doKeys('`', 'e');
+  helpers.assertCursorAt(0, 0);
 });
 testVim('visual', function(cm, vim, helpers) {
   helpers.doKeys('l', 'v', 'l', 'l');
@@ -861,15 +1104,6 @@ testVim('? and n/N', function(cm, vim, helpers) {
   helpers.doKeys('2', '?');
   helpers.assertCursorAt(0, 11);
 }, { value: 'match nope match \n nope Match' });
-//:noh should clear highlighting of search-results but allow to resume search through n
-testVim('noh_clearSearchHighlight', function(cm, vim, helpers) {
-  cm.openDialog = helpers.fakeOpenDialog('match');
-  helpers.doKeys('?');
-  helpers.doEx('noh');
-  eq(vim.searchState_.getOverlay(),null,'match-highlighting wasn\'t cleared');
-  helpers.doKeys('n');
-  helpers.assertCursorAt(0, 11,'can\'t resume search after clearing highlighting');
-}, { value: 'match nope match \n nope Match' });
 testVim('*', function(cm, vim, helpers) {
   cm.setCursor(0, 9);
   helpers.doKeys('*');
@@ -910,6 +1144,25 @@ testVim('#', function(cm, vim, helpers) {
   helpers.doKeys('#');
   helpers.assertCursorAt(1, 8);
 }, { value: '    :=  match nomatch match \nnomatch Match' });
+testVim('.', function(cm, vim, helpers) {
+  cm.setCursor(0, 0);
+  helpers.doKeys('2', 'd', 'w');
+  helpers.doKeys('.');
+  eq('5 6', cm.getValue());
+}, { value: '1 2 3 4 5 6'});
+testVim('._repeat', function(cm, vim, helpers) {
+  cm.setCursor(0, 0);
+  helpers.doKeys('2', 'd', 'w');
+  helpers.doKeys('3', '.');
+  eq('6', cm.getValue());
+}, { value: '1 2 3 4 5 6'});
+
+// Ex mode tests
+testVim('ex_go_to_line', function(cm, vim, helpers) {
+  cm.setCursor(0, 0);
+  helpers.doEx('4');
+  helpers.assertCursorAt(3, 0);
+}, { value: 'a\nb\nc\nd\ne\n'});
 testVim('ex_write', function(cm, vim, helpers) {
   var tmp = CodeMirror.commands.save;
   var written;
@@ -974,6 +1227,15 @@ testVim('ex_substitute_count_with_range', function(cm, vim, helpers) {
   helpers.doEx('1,3s/\\d/0/ 3');
   eq('1\n2\n0\n0', cm.getValue());
 }, { value: '1\n2\n3\n4' });
+//:noh should clear highlighting of search-results but allow to resume search through n
+testVim('ex_noh_clearSearchHighlight', function(cm, vim, helpers) {
+  cm.openDialog = helpers.fakeOpenDialog('match');
+  helpers.doKeys('?');
+  helpers.doEx('noh');
+  eq(vim.searchState_.getOverlay(),null,'match-highlighting wasn\'t cleared');
+  helpers.doKeys('n');
+  helpers.assertCursorAt(0, 11,'can\'t resume search after clearing highlighting');
+}, { value: 'match nope match \n nope Match' });
 // TODO: Reset key maps after each test.
 testVim('ex_map_key2key', function(cm, vim, helpers) {
   helpers.doEx('map a x');
