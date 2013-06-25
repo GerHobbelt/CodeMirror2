@@ -205,6 +205,10 @@
       <dd>When enabled (off by default), this will make the gutter
       stay visible when the document is scrolled horizontally.</dd>
 
+      <dt id="option_showCursorWhenSelecting"><code>showCursorWhenSelecting (boolean)</code></dt>
+      <dd>Whether the cursor should be drawn when a selection is
+      active. Defaults to false.</dd>
+
       <dt id="option_readOnly"><code>readOnly (boolean)</code></dt>
       <dd>This disables editing of the editor content by the user. If
       the special value <code>"nocursor"</code> is given (instead of
@@ -355,7 +359,7 @@
     also contains the <code>"default"</code> keymap holding the
     default bindings.</p>
 
-    <p>The values of properties in keymaps can be either functions of
+    <p id="commands">The values of properties in keymaps can be either functions of
     a single argument (the CodeMirror instance), strings, or
     <code>false</code>. Such strings refer to properties of the
     <code>CodeMirror.commands</code> object, which defines a number of
@@ -522,6 +526,10 @@
       <dd>Get an <code>{x, y, width, height}</code> object that
       represents the current scroll position and scrollable area size
       of the editor.</dd>
+      <dt id="scrollIntoView"><code>scrollIntoView(pos)</code></dt>
+      <dd>Scrolls the given <code>{line, ch}</code> position into
+      view. If no argument is given, this will scroll the cursor into
+      view.</dd>
 
       <dt id="setOption"><code>setOption(option, value)</code></dt>
       <dd>Change the configuration of the editor. <code>option</code>
@@ -554,6 +562,8 @@
       <dd>Given an <code>{x, y}</code> object (in page coordinates),
       returns the <code>{line, ch}</code> position that corresponds to
       it.</dd>
+      <dt id="defaultTextHeight"><code>defaultTextHeight() → number</code></dt>
+      <dd>Returns the line height of the default font for the editor.</dd>
 
       <dt id="undo"><code>undo()</code></dt>
       <dd>Undo one edit (if any undo events are stored).</dd>
@@ -708,10 +718,13 @@
       <dd>Get the number of lines in the editor.</dd>
 
       <dt id="getCursor"><code>getCursor(start) → object</code></dt>
-      <dd><code>start</code> is a boolean indicating whether the start
-      or the end of the selection must be retrieved. If it is not
-      given, the current cursor pos, i.e. the side of the selection
-      that would move if you pressed an arrow key, is chosen.
+      <dd><code>start</code> may be a boolean indicating whether the
+      start or the end of the selection must be retrieved. If it is
+      not given, the current cursor pos, i.e. the side of the
+      selection that would move if you pressed an arrow key, is
+      chosen. You may also pass one of the
+      strings <code>"start"</code>, <code>"end"</code>, <code>"head"</code>
+      (same as null), or <code>"anchor"</code> (the opposite).
       A <code>{line, ch}</code> object will be returned.</dd>
       <dt id="somethingSelected"><code>somethingSelected() → boolean</code></dt>
       <dd>Return true if any text is selected.</dd>
@@ -838,6 +851,13 @@
     will cause the given value (usually a method) to be added to all
     CodeMirror instances created from then on.</p>
 
+    <p id="defineInitHook">If your extention just needs to run some
+    code whenever a CodeMirror instance is initialized,
+    use <code>CodeMirror.defineInitHook</code>. Give it a function as
+    its only argument, and from then on, that function will be called
+    (with the instance as argument) whenever a new CodeMirror instance
+    is initialized.</p>
+
     <h2 id="addons">Add-ons</h2>
 
     <p>The <code>lib/util</code> directory in the distribution
@@ -929,6 +949,8 @@
       the <code>open</code> fields of the passed objects. When in a
       sub-mode, it will go back to the top mode again when
       the <code>close</code> string is encountered.
+      Pass <code>"\n"</code> for <code>open</code> or <code>close</code>
+      if you want to switch on a blank line.
       When <code>delimStyle</code> is specified, it will be the token
       style returned for the delimiter tokens. The outer mode will not
       see the content between the delimiters.
@@ -980,6 +1002,11 @@
       which will ensure the given mode is loaded and cause the given
       editor instance to refresh its mode when the loading
       succeeded. See the <a href="../demo/loadmode.html">demo</a>.</dd>
+      <dt id="util_continuecomment"><a href="../lib/util/continuecomment.js"><code>continuecomment.js</code></a></dt>
+      <dd>Adds a <a href="#commands">command</a>
+      called <code>newlineAndIndentContinueComment</code> that you can
+      bind <code>Enter</code> to in order to have the editor prefix
+      new lines inside C-like block comments with an asterisk.</dd>
     </dl>
 
     <h2 id="modeapi">Writing CodeMirror Modes</h2>
@@ -1120,7 +1147,7 @@
     state.</p>
 
     <p id="indent">If you want your mode to provide smart indentation
-    (though the <a href="#indentLine"><code>indentLine</code></a>
+    (through the <a href="#indentLine"><code>indentLine</code></a>
     method and the <code>indentAuto</code>
     and <code>newlineAndIndent</code> commands, which keys can be
     <a href="#option_extraKeys">bound</a> to), you must define
