@@ -15,8 +15,8 @@ function test(name, run, expectedFail) {
   var originalName = name;
   var i = 2; // Second function would be NAME_2
   while (indexOf(allNames, name) !== -1){
-    i++;
     name = originalName + "_" + i;
+    i++;
   }
   allNames.push(name);
   // Add test
@@ -83,14 +83,21 @@ function runTests(callback) {
         }
       }
     }
+    var threw = false;
     try {
       var message = test.func();
-      if (expFail) callback("fail", test.name, message);
-      else callback("ok", test.name, message);
     } catch(e) {
+      threw = true;
       if (expFail) callback("expected", test.name);
       else if (e instanceof Failure) callback("fail", test.name, e.message);
-      else callback("error", test.name, e.toString());
+      else {
+        var pos = /\bat .*?([^\/:]+):(\d+):/.exec(e.stack);
+        callback("error", test.name, e.toString() + (pos ? " (" + pos[1] + ":" + pos[2] + ")" : ""));
+      }
+    }
+    if (!threw) {
+      if (expFail) callback("fail", test.name, message || "expected failure, but succeeded");
+      else callback("ok", test.name, message);
     }
     if (!quit) { // Run next test
       var delay = 0;

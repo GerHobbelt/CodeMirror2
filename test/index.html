@@ -18,9 +18,11 @@
       #progress {
         background: #45d;
         color: white;
+        text-shadow: 0 0 1px #45d, 0 0 2px #45d, 0 0 3px #45d;
         font-weight: bold;
         white-space: pre;
       }
+      .CodeMirror { border: 1px solid black; }
     </style>
   </head>
   <body>
@@ -39,10 +41,14 @@
     <script src="driver.js"></script>
     <script src="test.js"></script>
     <script src="mode_test.js"></script>
+    <script src="../mode/css/css.js"></script>
+    <script src="../mode/css/test.js"></script>
     <script src="../mode/markdown/markdown.js"></script>
     <script src="../mode/markdown/test.js"></script>
     <script src="../mode/stex/stex.js"></script>
     <script src="../mode/stex/test.js"></script>
+    <script src="../mode/xquery/xquery.js"></script>
+    <script src="../mode/xquery/test.js"></script>
     <script>
       window.onload = function() {
         runHarness();
@@ -84,6 +90,7 @@
         count = 0;
         failed = 0;
         bad = "";
+        verbose = false;
         debugUsed = Array();
         totalTests = tests.length;
         progressTotal.nodeValue = " of " + totalTests;
@@ -155,7 +162,7 @@
         }
         if (verbose && !customMessage)  customMessage = message;
         setStatus(message, type);
-        if (customMessage.length > 0) {
+        if (customMessage && customMessage.length > 0) {
           addOutput(name, type, customMessage);
         }
       }
