@@ -12,8 +12,8 @@
 // * getFile: A function(name, c) that can be used to access files in
 //   the project that haven't been loaded yet. Simply do c(null) to
 //   indicate that a file is not available.
-// * fileFilter: A function that will be applied to documents before
-//   passing them on to Tern.
+// * fileFilter: A function(value, docName, doc) that will be applied
+//   to documents before passing them on to Tern.
 // * switchToDoc: A function(name) that should, when providing a
 //   multi-file view, switch the view or focus to the named file.
 // * showError: A function(editor, message) that can be used to
@@ -65,9 +65,10 @@
 
   CodeMirror.TernServer.prototype = {
     addDoc: function(name, doc) {
-      this.server.addFile(name, docValue(this, doc));
+      var data = {doc: doc, name: name, changed: null};
+      this.server.addFile(name, docValue(this, data));
       CodeMirror.on(doc, "change", this.trackChange);
-      return this.docs[name] = {doc: doc, name: name, changed: null};
+      return this.docs[name] = data;
     },
 
     delDoc: function(name) {
@@ -113,7 +114,7 @@
   function getFile(ts, name, c) {
     var buf = ts.docs[name];
     if (buf)
-      c(docValue(ts, buf.doc));
+      c(docValue(ts, buf));
     else if (ts.options.getFile)
       ts.options.getFile(name, c);
     else
@@ -153,7 +154,7 @@
   }
 
   function sendDoc(ts, doc) {
-    ts.server.request({files: [{type: "full", name: doc.name, text: docValue(ts, doc.doc)}]}, function(error) {
+    ts.server.request({files: [{type: "full", name: doc.name, text: docValue(ts, doc)}]}, function(error) {
       if (error) console.error(error);
       else doc.changed = null;
     });
@@ -443,12 +444,12 @@
         files.push(getFragmentAround(doc, startPos, query.end));
         query.file = "#0";
         var offsetLines = files[0].offsetLines;
-        if (query.start != null) query.start = incLine(-offsetLines, query.start);
-        query.end = incLine(-offsetLines, query.end);
+        if (query.start != null) query.start = Pos(query.start.line - -offsetLines, query.start.ch);
+        query.end = Pos(query.end.line - offsetLines, query.end.ch);
       } else {
         files.push({type: "full",
                     name: doc.name,
-                    text: docValue(ts, doc.doc)});
+                    text: docValue(ts, doc)});
         query.file = doc.name;
         doc.changed = null;
       }
@@ -458,7 +459,7 @@
     for (var name in ts.docs) {
       var cur = ts.docs[name];
       if (cur.changed && cur != doc) {
-        files.push({type: "full", name: cur.name, text: docValue(ts, cur.doc)});
+        files.push({type: "full", name: cur.name, text: docValue(ts, cur)});
         cur.changed = null;
       }
     }
@@ -468,7 +469,7 @@
 
   function getFragmentAround(data, start, end) {
     var doc = data.doc;
-    var minIndent = null, minLine = null, endLine, tabSize = doc.getOption("tabSize");
+    var minIndent = null, minLine = null, endLine, tabSize = 4;
     for (var p = start.line - 1, min = Math.max(0, p - 50); p >= min; --p) {
       var line = doc.getLine(p), fn = line.search(/\bfunction\b/);
       if (fn < 0) continue;
@@ -559,8 +560,8 @@
   }
 
   function docValue(ts, doc) {
-    var val = doc.getValue();
-    if (ts.options.fileFilter) val = ts.options.fileFilter(val);
+    var val = doc.doc.getValue();
+    if (ts.options.fileFilter) val = ts.options.fileFilter(val, doc.name, doc.doc);
     return val;
   }
 
