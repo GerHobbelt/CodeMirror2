@@ -520,7 +520,7 @@
       };
     }
 
-    var vimApi= {
+    var vimApi = {
       buildKeyMap: function() {
         // TODO: Convert keymap into dictionary format for fast lookup.
       },
