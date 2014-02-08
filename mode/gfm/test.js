@@ -16,8 +16,8 @@
      "[comment&formatting&formatting-code-block ```]");
 
   FT("taskList",
-     "[variable-2&formatting&formatting-list - ][meta&formatting&formatting-task [ ]]][variable-2  foo]",
-     "[variable-2&formatting&formatting-list - ][property&formatting&formatting-task [x]]][variable-2  foo]");
+     "[variable-2&formatting&formatting-list&formatting-list-ul - ][meta&formatting&formatting-task [ ]]][variable-2  foo]",
+     "[variable-2&formatting&formatting-list&formatting-list-ul - ][property&formatting&formatting-task [x]]][variable-2  foo]");
 
   MT("emInWordAsterisk",
      "foo[em *bar*]hello");
@@ -114,7 +114,7 @@
 
   MT("notALink",
      "[comment ```css]",
-     "[tag foo] {[property color][operator :][keyword black];}",
+     "[tag foo] {[property color]:[keyword black];}",
      "[comment ```][link http://www.example.com/]");
 
   MT("notALink",

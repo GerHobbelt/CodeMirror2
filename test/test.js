@@ -1479,6 +1479,21 @@ testCM("dirtyBit", function(cm) {
   eq(cm.isClean(), true);
 });
 
+testCM("changeGeneration", function(cm) {
+  cm.replaceSelection("x", null, "+insert");
+  var softGen = cm.changeGeneration();
+  cm.replaceSelection("x", null, "+insert");
+  cm.undo();
+  eq(cm.getValue(), "");
+  is(!cm.isClean(softGen));
+  cm.replaceSelection("x", null, "+insert");
+  var hardGen = cm.changeGeneration(true);
+  cm.replaceSelection("x", null, "+insert");
+  cm.undo();
+  eq(cm.getValue(), "x");
+  is(cm.isClean(hardGen));
+});
+
 testCM("addKeyMap", function(cm) {
   function sendKey(code) {
     cm.triggerOnKeyDown({type: "keydown", keyCode: code,
@@ -1610,8 +1625,9 @@ testCM("change_removedText", function(cm) {
 testCM("lineStyleFromMode", function(cm) {
   CodeMirror.defineMode("test_mode", function() {
     return {token: function(stream) {
-      if (stream.match(/^\[[^\]]*\]/)) return "line-brackets";
-      if (stream.match(/^\([^\]]*\)/)) return "line-background-parens";
+      if (stream.match(/^\[[^\]]*\]/)) return "  line-brackets  ";
+      if (stream.match(/^\([^\)]*\)/)) return "  line-background-parens  ";
+      if (stream.match(/^<[^>]*>/)) return "  span  line-line  line-background-bg  ";
       stream.match(/^\s+|^\S+/);
     }};
   });
@@ -1624,4 +1640,30 @@ testCM("lineStyleFromMode", function(cm) {
   eq(parenElts.length, 1);
   eq(parenElts[0].nodeName, "DIV");
   is(!/parens.*parens/.test(parenElts[0].className));
-}, {value: "line1: [br] [br]\nline2: (par) (par)\nline3: nothing"});
+  eq(parenElts[0].parentElement.nodeName, "DIV");
+
+  eq(byClassName(cm.getWrapperElement(), "bg").length, 1);
+  eq(byClassName(cm.getWrapperElement(), "line").length, 1);
+  var spanElts = byClassName(cm.getWrapperElement(), "cm-span");
+  eq(spanElts.length, 2);
+  is(/^\s*cm-span\s*$/.test(spanElts[0].className));
+}, {value: "line1: [br] [br]\nline2: (par) (par)\nline3: <tag> <tag>"});
+
+CodeMirror.registerHelper("xxx", "a", "A");
+CodeMirror.registerHelper("xxx", "b", "B");
+CodeMirror.defineMode("yyy", function() {
+  return {
+    token: function(stream) { stream.skipToEnd(); },
+    xxx: ["a", "b", "q"]
+  };
+});
+CodeMirror.registerGlobalHelper("xxx", "c", function(m) { return m.enableC; }, "C");
+
+testCM("helpers", function(cm) {
+  cm.setOption("mode", "yyy");
+  eq(cm.getHelpers(Pos(0, 0), "xxx").join("/"), "A/B");
+  cm.setOption("mode", {name: "yyy", modeProps: {xxx: "b", enableC: true}});
+  eq(cm.getHelpers(Pos(0, 0), "xxx").join("/"), "B/C");
+  cm.setOption("mode", "javascript");
+  eq(cm.getHelpers(Pos(0, 0), "xxx").join("/"), "");
+});
