@@ -50,7 +50,7 @@ function checkFile(fileName) {
       ecmaVersion: 3,
       strictSemicolons: true,
       allowTrailingCommas: false,
-      forbidReserved: true,
+      forbidReserved: "everywhere",
       sourceFile: fileName
     });
   } catch (e) {
@@ -99,6 +99,13 @@ function checkFile(fileName) {
     },
     ForStatement: function(node) {
       checkReusedIndex(node);
+    },
+    MemberExpression: function(node) {
+      if (node.object.type == "Identifier" && node.object.name == "console" && !node.computed)
+        fail("Found console." + node.property.name, node.loc);
+    },
+    DebuggerStatement: function(node) {
+      fail("Found debugger statement", node.loc);
     }
   }, scopePasser);
 
