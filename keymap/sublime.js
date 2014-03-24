@@ -73,15 +73,36 @@
   map["Shift-Tab"] = "indentLess";
 
   cmds[map[ctrl + "L"] = "selectLine"] = function(cm) {
-    var ranges = cm.listSelections(), prim = cm.getCursor(), primIndex, extended = [];
+    var ranges = cm.listSelections(), extended = [];
     for (var i = 0; i < ranges.length; i++) {
       var range = ranges[i];
-      if (range.head == prim) primIndex = i;
       extended.push({anchor: Pos(range.from().line, 0),
                      head: Pos(range.to().line + 1, 0)});
     }
-    cm.setSelections(extended, primIndex);
+    cm.setSelections(extended);
   };
+
+  map["Shift-" + ctrl + "K"] = "deleteLine";
+
+  function insertLine(cm, above) {
+    cm.operation(function() {
+      var len = cm.listSelections().length, newSelection = [], last = -1;
+      for (var i = 0; i < len; i++) {
+        var head = cm.listSelections()[i].head;
+        if (head.line <= last) continue;
+        var at = Pos(head.line + (above ? 0 : 1), 0);
+        cm.replaceRange("\n", at, null, "+insertLine");
+        cm.indentLine(at.line, null, true);
+        newSelection.push({head: at, anchor: at});
+        last = head.line + 1;
+      }
+      cm.setSelections(newSelection);
+    });
+  }
+
+  cmds[map[ctrl + "Enter"] = "insertLineAfter"] = function(cm) { insertLine(cm, false); };
+
+  cmds[map["Shift-" + ctrl + "Enter"] = "insertLineBefore"] = function(cm) { insertLine(cm, true); };
 
   function wordAt(cm, pos) {
     var start = pos.ch, end = start, line = cm.getLine(pos.line);
@@ -151,9 +172,18 @@
       for (var i = 0; i < linesToMove.length; i += 2) {
         var from = linesToMove[i], to = linesToMove[i + 1];
         var line = cm.getLine(from);
-        cm.replaceRange("", Pos(from, 0), Pos(from + 1, 0));
-        cm.replaceRange(line + "\n", Pos(to, 0));
+        cm.replaceRange("", Pos(from, 0), Pos(from + 1, 0), "+swapLine");
+        if (to > cm.lastLine()) {
+          cm.replaceRange("\n" + line, Pos(cm.lastLine()), null, "+swapLine");
+          var sels = cm.listSelections(), last = sels[sels.length - 1];
+          var head = last.head.line == to ? Pos(to - 1) : last.head;
+          var anchor = last.anchor.line == to ? Pos(to - 1) : last.anchor;
+          cm.setSelections(sels.slice(0, sels.length - 1).concat([{head: head, anchor: anchor}]));
+        } else {
+          cm.replaceRange(line + "\n", Pos(to, 0), null, "+swapLine");
+        }
       }
+      cm.scrollIntoView();
     });
   };
 
@@ -170,11 +200,12 @@
         var from = linesToMove[i], to = linesToMove[i + 1];
         var line = cm.getLine(from);
         if (from == cm.lastLine())
-          cm.replaceRange("", Pos(from - 1), Pos(from));
+          cm.replaceRange("", Pos(from - 1), Pos(from), "+swapLine");
         else
-          cm.replaceRange("", Pos(from, 0), Pos(from + 1, 0));
-        cm.replaceRange(line + "\n", Pos(to, 0));
+          cm.replaceRange("", Pos(from, 0), Pos(from + 1, 0), "+swapLine");
+        cm.replaceRange(line + "\n", Pos(to, 0), null, "+swapLine");
       }
+      cm.scrollIntoView();
     });
   };
 
@@ -218,6 +249,7 @@
         else
           cm.replaceRange(cm.getRange(range.from(), range.to()), range.from());
       }
+      cm.scrollIntoView();
     });
   };
 
@@ -347,6 +379,17 @@
       }
     });
   }
+
+  mapK[ctrl + "Backspace"] = "delLineLeft";
+
+  cmds[mapK[ctrl + "K"] = "delLineRight"] = function(cm) {
+    cm.operation(function() {
+      var ranges = cm.listSelections();
+      for (var i = ranges.length - 1; i >= 0; i--)
+        cm.replaceRange("", ranges[i].anchor, Pos(ranges[i].to().line), "+delete");
+      cm.scrollIntoView();
+    });
+  };
 
   cmds[mapK[ctrl + "U"] = "upcaseAtCursor"] = function(cm) {
     modifyWordOrSelection(cm, function(str) { return str.toUpperCase(); });

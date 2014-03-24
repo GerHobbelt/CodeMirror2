@@ -63,7 +63,7 @@
 <section class=first id=overview>
     <h2 style="position: relative">
       User manual and reference guide
-      <span style="color: #888; font-size: 1rem; position: absolute; right: 0; bottom: 0">version 4.0.1</span>
+      <span style="color: #888; font-size: 1rem; position: absolute; right: 0; bottom: 0">version 4.0.2</span>
     </h2>
 
     <p>CodeMirror is a code-editor component that can be embedded in
@@ -1229,8 +1229,8 @@
       <dt id="setSelections"><code><strong>doc.setSelections</strong>(ranges: array&lt;{anchor, head}&gt;, ?primary: integer, ?options: object)</code></dt>
       <dd>Sets a new set of selections. There must be at least one
       selection in the given array. When <code>primary</code> is
-      given, it determines which selection is the primary one
-      (defaults to the last one). Supports the same options as <a href="#setSelection"><code>setSelection</code></a>.</dd>
+      given, it determines which selection is the primary one.
+      Supports the same options as <a href="#setSelection"><code>setSelection</code></a>.</dd>
       <dt id="addSelection"><code><strong>doc.addSelection</strong>(anchor: {line, ch}, ?head: {line, ch})</code></dt>
       <dd>Adds a new selection to the existing set of selections, and
       makes it the primary selection.</dd>
@@ -1552,6 +1552,9 @@
         when the cursor is on top of the bookmark will end up to the
         right of the bookmark. Set this option to true to make it go
         to the left instead.</dd>
+        <dt><code><strong>shared</strong>: boolean</code></dt><dd>See
+        the corresponding <a href="#mark_shared">option</a>
+        to <code>markText</code>.</dd>
       </dl></dd>
 
       <dt id="findMarks"><code><strong>doc.findMarks</strong>(from: {line, ch}, to: {line, ch}) → array&lt;TextMarker&gt;</code></dt>
