@@ -1,3 +1,13 @@
+(function(mod) {
+  if (typeof exports == "object" && typeof module == "object") // CommonJS
+    mod(require("../lib/codemirror"));
+  else if (typeof define == "function" && define.amd) // AMD
+    define(["../lib/codemirror"], mod);
+  else // Plain browser env
+    mod(CodeMirror);
+})(function(CodeMirror) {
+  "use strict";
+
 CodeMirror.modeInfo = [
   {name: 'APL', mime: 'text/apl', mode: 'apl'},
   {name: 'Asterisk', mime: 'text/x-asterisk', mode: 'asterisk'},
@@ -36,6 +46,7 @@ CodeMirror.modeInfo = [
   {name: 'JavaScript', mime: 'text/javascript', mode: 'javascript'},
   {name: 'JSON', mime: 'application/x-json', mode: 'javascript'},
   {name: 'JSON', mime: 'application/json', mode: 'javascript'},
+  {name: 'JSON-LD', mime: 'application/ld+json', mode: 'javascript'},
   {name: 'TypeScript', mime: 'application/typescript', mode: 'javascript'},
   {name: 'Jinja2', mime: null, mode: 'jinja2'},
   {name: 'Julia', mime: 'text/x-julia', mode: 'julia'},
@@ -57,6 +68,7 @@ CodeMirror.modeInfo = [
   {name: 'Plain Text', mime: 'text/plain', mode: 'null'},
   {name: 'Properties files', mime: 'text/x-properties', mode: 'properties'},
   {name: 'Python', mime: 'text/x-python', mode: 'python'},
+  {name: 'Puppet', mime: 'text/x-puppet', mode: 'puppet'},
   {name: 'Cython', mime: 'text/x-cython', mode: 'python'},
   {name: 'R', mime: 'text/x-rsrc', mode: 'r'},
   {name: 'reStructuredText', mime: 'text/x-rst', mode: 'rst'},
@@ -85,8 +97,9 @@ CodeMirror.modeInfo = [
   {name: 'Velocity', mime: 'text/velocity', mode: 'velocity'},
   {name: 'Verilog', mime: 'text/x-verilog', mode: 'verilog'},
   {name: 'XML', mime: 'application/xml', mode: 'xml'},
-  {name: 'HTML', mime: 'text/html', mode: 'xml'},
   {name: 'XQuery', mime: 'application/xquery', mode: 'xquery'},
   {name: 'YAML', mime: 'text/x-yaml', mode: 'yaml'},
   {name: 'Z80', mime: 'text/x-z80', mode: 'z80'}
 ];
+
+});

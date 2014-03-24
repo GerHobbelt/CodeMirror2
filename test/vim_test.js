@@ -959,7 +959,12 @@ testVim('<<', function(cm, vim, helpers) {
 // Edit tests
 function testEdit(name, before, pos, edit, after) {
   return testVim(name, function(cm, vim, helpers) {
-             cm.setCursor(0, before.search(pos));
+             var ch = before.search(pos)
+             var line = before.substring(0, ch).split('\n').length - 1;
+             if (line) {
+               ch = before.substring(0, ch).split('\n').pop().length;
+             }
+             cm.setCursor(line, ch);
              helpers.doKeys.apply(this, edit.split(''));
              eq(after, cm.getValue());
            }, {value: before});
@@ -997,6 +1002,40 @@ testEdit('diW_end_spc', 'foo \tbAr', /A/, 'diW', 'foo \t');
 testEdit('daW_end_spc', 'foo \tbAr', /A/, 'daW', 'foo');
 testEdit('diW_end_punct', 'foo \tbAr.', /A/, 'diW', 'foo \t');
 testEdit('daW_end_punct', 'foo \tbAr.', /A/, 'daW', 'foo');
+// Deleting text objects
+//    Open and close on same line
+testEdit('di(_open_spc', 'foo (bAr) baz', /\(/, 'di(', 'foo () baz');
+testEdit('di)_open_spc', 'foo (bAr) baz', /\(/, 'di)', 'foo () baz');
+testEdit('da(_open_spc', 'foo (bAr) baz', /\(/, 'da(', 'foo  baz');
+testEdit('da)_open_spc', 'foo (bAr) baz', /\(/, 'da)', 'foo  baz');
+
+testEdit('di(_middle_spc', 'foo (bAr) baz', /A/, 'di(', 'foo () baz');
+testEdit('di)_middle_spc', 'foo (bAr) baz', /A/, 'di)', 'foo () baz');
+testEdit('da(_middle_spc', 'foo (bAr) baz', /A/, 'da(', 'foo  baz');
+testEdit('da)_middle_spc', 'foo (bAr) baz', /A/, 'da)', 'foo  baz');
+
+testEdit('di(_close_spc', 'foo (bAr) baz', /\)/, 'di(', 'foo () baz');
+testEdit('di)_close_spc', 'foo (bAr) baz', /\)/, 'di)', 'foo () baz');
+testEdit('da(_close_spc', 'foo (bAr) baz', /\)/, 'da(', 'foo  baz');
+testEdit('da)_close_spc', 'foo (bAr) baz', /\)/, 'da)', 'foo  baz');
+
+//  Open and close on different lines, equally indented
+testEdit('di{_middle_spc', 'a{\n\tbar\n}b', /r/, 'di{', 'a{}b');
+testEdit('di}_middle_spc', 'a{\n\tbar\n}b', /r/, 'di}', 'a{}b');
+testEdit('da{_middle_spc', 'a{\n\tbar\n}b', /r/, 'da{', 'ab');
+testEdit('da}_middle_spc', 'a{\n\tbar\n}b', /r/, 'da}', 'ab');
+
+// open and close on diff lines, open indented less than close
+testEdit('di{_middle_spc', 'a{\n\tbar\n\t}b', /r/, 'di{', 'a{}b');
+testEdit('di}_middle_spc', 'a{\n\tbar\n\t}b', /r/, 'di}', 'a{}b');
+testEdit('da{_middle_spc', 'a{\n\tbar\n\t}b', /r/, 'da{', 'ab');
+testEdit('da}_middle_spc', 'a{\n\tbar\n\t}b', /r/, 'da}', 'ab');
+
+// open and close on diff lines, open indented more than close
+testEdit('di[_middle_spc', 'a\t[\n\tbar\n]b', /r/, 'di[', 'a\t[]b');
+testEdit('di]_middle_spc', 'a\t[\n\tbar\n]b', /r/, 'di]', 'a\t[]b');
+testEdit('da[_middle_spc', 'a\t[\n\tbar\n]b', /r/, 'da[', 'a\tb');
+testEdit('da]_middle_spc', 'a\t[\n\tbar\n]b', /r/, 'da]', 'a\tb');
 
 // Operator-motion tests
 testVim('D', function(cm, vim, helpers) {
@@ -2041,6 +2080,14 @@ testVim('moveTillCharacter', function(cm, vim, helpers){
   eq('The ox \n', cm.getValue());
   eq(4, cm.getCursor().ch);
 }, { value: moveTillCharacterSandbox});
+testVim('searchForPipe', function(cm, vim, helpers){
+  cm.setCursor(0, 0);
+  // Search for the '|'.
+  cm.openDialog = helpers.fakeOpenDialog('|');
+  helpers.doKeys('/');
+  eq(4, cm.getCursor().ch);
+}, { value: 'this|that'});
+
 
 var scrollMotionSandbox =
   '\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
@@ -2290,7 +2337,7 @@ testVim('ex_substitute_visual_range', function(cm, vim, helpers) {
 }, { value: '1\n2\n3\n4\n5' });
 testVim('ex_substitute_capture', function(cm, vim, helpers) {
   cm.setCursor(1, 0);
-  helpers.doEx('s/(\\d+)/$1$1/')
+  helpers.doEx('s/\\(\\d+\\)/$1$1/')
   eq('a1111 a1212 a1313', cm.getValue());
 }, { value: 'a11 a12 a13' });
 testVim('ex_substitute_empty_query', function(cm, vim, helpers) {
@@ -2306,6 +2353,21 @@ testVim('ex_substitute_slash_regex', function(cm, vim, helpers) {
   helpers.doEx('%s/\\//|');
   eq('one|two \n three|four', cm.getValue());
 }, { value: 'one/two \n three/four'});
+testVim('ex_substitute_pipe_regex', function(cm, vim, helpers) {
+  cm.setCursor(1, 0);
+  helpers.doEx('%s/|/,');
+  eq('one,two \n three,four', cm.getValue());
+}, { value: 'one|two \n three|four'});
+testVim('ex_substitute_or_regex', function(cm, vim, helpers) {
+  cm.setCursor(1, 0);
+  helpers.doEx('%s/o\\|e\\|u/a');
+  eq('ana|twa \n thraa|faar', cm.getValue());
+}, { value: 'one|two \n three|four'});
+testVim('ex_substitute_or_word_regex', function(cm, vim, helpers) {
+  cm.setCursor(1, 0);
+  helpers.doEx('%s/\\(one\\|two\\)/five');
+  eq('five|five \n three|four', cm.getValue());
+}, { value: 'one|two \n three|four'});
 testVim('ex_substitute_backslashslash_regex', function(cm, vim, helpers) {
   cm.setCursor(1, 0);
   helpers.doEx('%s/\\\\/,');
@@ -2501,4 +2563,10 @@ testVim('ex_map_key2key_from_colon', function(cm, vim, helpers) {
   helpers.doKeys(':');
   helpers.assertCursorAt(0, 0);
   eq('bc', cm.getValue());
+}, { value: 'abc' });
+
+// Test event handlers
+testVim('beforeSelectionChange', function(cm, vim, helpers) {
+  cm.setCursor(0, 100);
+  eqPos(cm.getCursor('head'), cm.getCursor('anchor'));
 }, { value: 'abc' });
