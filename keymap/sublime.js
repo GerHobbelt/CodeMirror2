@@ -455,6 +455,32 @@
     });
   };
 
+  function findAndGoTo(cm, forward) {
+    var from = cm.getCursor("from"), to = cm.getCursor("to");
+    if (CodeMirror.cmpPos(from, to) == 0) {
+      var word = wordAt(cm, from);
+      if (!word.word) return;
+      from = word.from;
+      to = word.to;
+    }
+
+    var query = cm.getRange(from, to);
+    var cur = cm.getSearchCursor(query, forward ? to : from);
+
+    if (forward ? cur.findNext() : cur.findPrevious()) {
+      cm.setSelection(cur.from(), cur.to());
+    } else {
+      cur = cm.getSearchCursor(query, forward ? Pos(cm.firstLine(), 0)
+                                              : cm.clipPos(Pos(cm.lastLine())));
+      if (forward ? cur.findNext() : cur.findPrevious())
+        cm.setSelection(cur.from(), cur.to());
+      else if (word)
+        cm.setSelection(from, to);
+    }
+  };
+  cmds[map[ctrl + "F3"] = "findUnder"] = function(cm) { findAndGoTo(cm, true); };
+  cmds[map["Shift-" + ctrl + "F3"] = "findUnderPrevious"] = function(cm) { findAndGoTo(cm,false); };
+
   map["Shift-" + ctrl + "["] = "fold";
   map["Shift-" + ctrl + "]"] = "unfold";
   mapK[ctrl + "0"] = mapK[ctrl + "j"] = "unfoldAll";
