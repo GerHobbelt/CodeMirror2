@@ -1,3 +1,6 @@
+// CodeMirror 4.1.1, copyright (c) by Marijn Haverbeke and others
+// Distributed under an MIT license: http://codemirror.net/LICENSE
+
 (function() {
   var mode = CodeMirror.getMode({indentUnit: 2}, "css");
   function MT(name) { test.mode(name, mode, Array.prototype.slice.call(arguments, 1)); }
@@ -116,4 +119,7 @@
      "  [property src]: [atom url]([string http://blah]),",
      "    [atom url]([string http://foo]);",
      "}");
+
+  MT("empty_url",
+     "[def @import] [tag url]() [tag screen];");
 })();

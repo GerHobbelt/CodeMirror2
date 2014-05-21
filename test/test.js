@@ -1407,6 +1407,28 @@ testCM("lineWidgetCautiousRedraw", function(cm) {
   is(!redrawn);
 }, {value: "123\n456"});
 
+testCM("lineWidgetChanged", function(cm) {
+  addDoc(cm, 2, 300);
+  cm.setSize(null, cm.defaultTextHeight() * 50);
+  cm.scrollTo(null, cm.heightAtLine(125, "local"));
+  function w() {
+    var node = document.createElement("div");
+    node.style.cssText = "background: yellow; height: 50px;";
+    return node;
+  }
+  var info0 = cm.getScrollInfo();
+  var w0 = cm.addLineWidget(0, w());
+  var w150 = cm.addLineWidget(150, w());
+  var w300 = cm.addLineWidget(300, w());
+  var info1 = cm.getScrollInfo();
+  eq(info0.height + 150, info1.height);
+  eq(info0.top + 50, info1.top);
+  w0.node.style.height = w150.node.style.height = w300.node.style.height = "10px";
+  w0.changed(); w150.changed(); w300.changed();
+  var info2 = cm.getScrollInfo();
+  eq(info0.height + 30, info2.height);
+  eq(info0.top + 10, info2.top);
+});
 
 testCM("getLineNumber", function(cm) {
   addDoc(cm, 2, 20);
@@ -1754,6 +1776,20 @@ testCM("lineStyleFromMode", function(cm) {
   is(/^\s*cm-span\s*$/.test(spanElts[0].className));
 }, {value: "line1: [br] [br]\nline2: (par) (par)\nline3: <tag> <tag>"});
 
+testCM("lineStyleFromBlankLine", function(cm) {
+  CodeMirror.defineMode("lineStyleFromBlankLine_mode", function() {
+    return {token: function(stream) { stream.skipToEnd(); return "comment"; },
+            blankLine: function() { return "line-blank"; }};
+  });
+  cm.setOption("mode", "lineStyleFromBlankLine_mode");
+  var blankElts = byClassName(cm.getWrapperElement(), "blank");
+  eq(blankElts.length, 1);
+  eq(blankElts[0].nodeName, "PRE");
+  cm.replaceRange("x", Pos(1, 0));
+  blankElts = byClassName(cm.getWrapperElement(), "blank");
+  eq(blankElts.length, 0);
+}, {value: "foo\n\nbar"});
+
 CodeMirror.registerHelper("xxx", "a", "A");
 CodeMirror.registerHelper("xxx", "b", "B");
 CodeMirror.defineMode("yyy", function() {
@@ -1854,3 +1890,16 @@ testCM("alwaysMergeSelEventWithChangeOrigin", function(cm) {
   cm.undoSelection();
   eq(cm.getValue(), "Va");
 }, {value: "a"});
+
+testCM("getTokenTypeAt", function(cm) {
+  eq(cm.getTokenTypeAt(Pos(0, 0)), "number");
+  eq(cm.getTokenTypeAt(Pos(0, 6)), "string");
+  cm.addOverlay({
+    token: function(stream) {
+      if (stream.match("foo")) return "foo";
+      else stream.next();
+    }
+  });
+  eq(byClassName(cm.getWrapperElement(), "cm-foo").length, 1);
+  eq(cm.getTokenTypeAt(Pos(0, 6)), "string");
+}, {value: "1 + 'foo'", mode: "javascript"});

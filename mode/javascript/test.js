@@ -1,3 +1,6 @@
+// CodeMirror 4.1.1, copyright (c) by Marijn Haverbeke and others
+// Distributed under an MIT license: http://codemirror.net/LICENSE
+
 (function() {
   var mode = CodeMirror.getMode({indentUnit: 2}, "javascript");
   function MT(name) { test.mode(name, mode, Array.prototype.slice.call(arguments, 1)); }
@@ -70,6 +73,9 @@
   MT("quasi",
      "[variable re][string-2 `fofdlakj${][variable x] [operator +] ([variable re][string-2 `foo`]) [operator +] [number 1][string-2 }fdsa`] [operator +] [number 2]");
 
+  MT("quasi_no_function",
+     "[variable x] [operator =] [string-2 `fofdlakj${][variable x] [operator +] [string-2 `foo`] [operator +] [number 1][string-2 }fdsa`] [operator +] [number 2]");
+
   MT("indent_statement",
      "[keyword var] [variable x] [operator =] [number 10]",
      "[variable x] [operator +=] [variable y] [operator +]",
@@ -103,6 +109,22 @@
      "{",
      "  [keyword debugger];",
      "}");
+
+  MT("indent_else",
+     "[keyword for] (;;)",
+     "  [keyword if] ([variable foo])",
+     "    [keyword if] ([variable bar])",
+     "      [number 1];",
+     "    [keyword else]",
+     "      [number 2];",
+     "  [keyword else]",
+     "    [number 3];");
+
+  MT("indent_below_if",
+     "[keyword for] (;;)",
+     "  [keyword if] ([variable foo])",
+     "    [number 1];",
+     "[number 2];");
 
   MT("multilinestring",
      "[keyword var] [variable x] [operator =] [string 'foo\\]",
