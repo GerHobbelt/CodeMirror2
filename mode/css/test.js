@@ -1,4 +1,4 @@
-// CodeMirror 4.1.1, copyright (c) by Marijn Haverbeke and others
+// CodeMirror, copyright (c) by Marijn Haverbeke and others
 // Distributed under an MIT license: http://codemirror.net/LICENSE
 
 (function() {
@@ -122,4 +122,14 @@
 
   MT("empty_url",
      "[def @import] [tag url]() [tag screen];");
+
+  MT("parens",
+     "[qualifier .foo] {",
+     "  [property background-image]: [variable fade]([atom #000], [number 20%]);",
+     "  [property border-image]: [variable linear-gradient](",
+     "    [atom to] [atom bottom],",
+     "    [variable fade]([atom #000], [number 20%]) [number 0%],",
+     "    [variable fade]([atom #000], [number 20%]) [number 100%]",
+     "  );",
+     "}");
 })();
