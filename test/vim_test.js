@@ -909,6 +909,19 @@ testVim('c_visual_block', function(cm, vim, helpers) {
   cm.replaceSelections(replacement);
   eq('1hworld\n5hworld\nahworld', cm.getValue());
 }, {value: '1234\n5678\nabcdefg'});
+testVim('c_visual_block_replay', function(cm, vim, helpers) {
+  cm.setCursor(0, 1);
+  helpers.doKeys('<C-v>', '2', 'j', 'l', 'c');
+  var replacement = new Array(cm.listSelections().length+1).join('fo ').split(' ');
+  replacement.pop();
+  cm.replaceSelections(replacement);
+  eq('1fo4\n5fo8\nafodefg', cm.getValue());
+  helpers.doInsertModeKeys('Esc');
+  cm.setCursor(0, 0);
+  helpers.doKeys('.');
+  eq('foo4\nfoo8\nfoodefg', cm.getValue());
+}, {value: '1234\n5678\nabcdefg'});
+
 // Swapcase commands edit in place and do not modify registers.
 testVim('g~w_repeat', function(cm, vim, helpers) {
   // Assert that dw does delete newline if it should go to the next line, and
@@ -1214,6 +1227,14 @@ testVim('A', function(cm, vim, helpers) {
   helpers.assertCursorAt(0, lines[0].length);
   eq('vim-insert', cm.getOption('keyMap'));
 });
+testVim('A_visual_block', function(cm, vim, helpers) {
+  cm.setCursor(0, 1);
+  helpers.doKeys('<C-v>', '2', 'j', 'l', 'l', 'A');
+  var replacement = new Array(cm.listSelections().length+1).join('hello ').split(' ');
+  replacement.pop();
+  cm.replaceSelections(replacement);
+  eq('testhello\nmehello\npleahellose', cm.getValue());
+}, {value: 'test\nme\nplease'});
 testVim('I', function(cm, vim, helpers) {
   cm.setCursor(0, 4);
   helpers.doKeys('I');
@@ -1228,6 +1249,14 @@ testVim('I_repeat', function(cm, vim, helpers) {
   eq('testtesttestblah', cm.getValue());
   helpers.assertCursorAt(0, 11);
 }, { value: 'blah' });
+testVim('I_visual_block', function(cm, vim, helpers) {
+  cm.setCursor(0, 0);
+  helpers.doKeys('<C-v>', '2', 'j', 'l', 'l', 'I');
+  var replacement = new Array(cm.listSelections().length+1).join('hello ').split(' ');
+  replacement.pop();
+  cm.replaceSelections(replacement);
+  eq('hellotest\nhellome\nhelloplease', cm.getValue());
+}, {value: 'test\nme\nplease'});
 testVim('o', function(cm, vim, helpers) {
   cm.setCursor(0, 4);
   helpers.doKeys('o');
@@ -1622,6 +1651,11 @@ testVim('visual', function(cm, vim, helpers) {
   helpers.doKeys('d');
   eq('15', cm.getValue());
 }, { value: '12345' });
+testVim('visual_exit', function(cm, vim, helpers) {
+  helpers.doKeys('<C-v>', 'l', 'j', 'j', '<Esc>');
+  eq(cm.getCursor('anchor'), cm.getCursor('head'));
+  eq(vim.visualMode, false);
+}, { value: 'hello\nworld\nfoo' });
 testVim('visual_line', function(cm, vim, helpers) {
   helpers.doKeys('l', 'V', 'l', 'j', 'j', 'd');
   eq(' 4\n 5', cm.getValue());

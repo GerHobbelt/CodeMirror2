@@ -616,7 +616,9 @@
           visualLine: false,
           visualBlock: false,
           lastSelection: null,
-          lastPastedText: null
+          lastPastedText: null,
+          // Used by two-character ESC keymap routines. Should not be changed from false here.
+          awaitingEscapeSecondCharacter: false
         };
       }
       return cm.state.vim;
@@ -1860,6 +1862,12 @@
         var curStart = cursorIsBefore(start.anchor, start.head) ? start.anchor : start.head;
         var curEnd = cursorIsBefore(end.anchor, end.head) ? end.head : end.anchor;
         var text = cm.getSelection();
+        var visualBlock = vim.visualBlock;
+        if (vim.lastSelection && !vim.visualMode) {
+          visualBlock = vim.lastSelection.visualBlock ? true : visualBlock;
+        }
+        var lastInsertModeChanges = vimGlobalState.macroModeState.lastInsertModeChanges;
+        lastInsertModeChanges.inVisualBlock = visualBlock;
         var replacement = new Array(selections.length).join('1').split('1');
         // save the selectionEnd mark
         var selectionEnd = vim.marks['>'] ? vim.marks['>'].find() : cm.getCursor('head');
@@ -1868,7 +1876,7 @@
             operatorArgs.linewise);
         if (operatorArgs.linewise) {
           // 'C' in visual block extends the block till eol for all lines
-          if (vim.visualBlock){
+          if (visualBlock){
             var startLine = curStart.line;
             while (startLine <= curEnd.line) {
               var endCh = lineLength(cm, startLine);
@@ -1898,7 +1906,7 @@
               curEnd = offsetCursor(curEnd, 0, - match[0].length);
             }
           }
-          if (vim.visualBlock) {
+          if (visualBlock) {
             cm.replaceSelections(replacement);
           } else {
             cm.setCursor(curStart);
@@ -2096,6 +2104,11 @@
         vim.insertMode = true;
         vim.insertModeRepeat = actionArgs && actionArgs.repeat || 1;
         var insertAt = (actionArgs) ? actionArgs.insertAt : null;
+        if (vim.visualMode) {
+          var selections = getSelectedAreaRange(cm, vim);
+          var selectionStart = selections[0];
+          var selectionEnd = selections[1];
+        }
         if (insertAt == 'eol') {
           var cursor = cm.getCursor();
           cursor = Pos(cursor.line, lineLength(cm, cursor.line));
@@ -2103,15 +2116,34 @@
         } else if (insertAt == 'charAfter') {
           cm.setCursor(offsetCursor(cm.getCursor(), 0, 1));
         } else if (insertAt == 'firstNonBlank') {
-          cm.setCursor(motions.moveToFirstNonWhiteSpaceCharacter(cm));
-        } else if (insertAt == 'endOfSelectedArea') {
-          var selectionEnd = cm.getCursor('head');
-          var selectionStart = cm.getCursor('anchor');
-          if (selectionEnd.line < selectionStart.line) {
-            selectionEnd = Pos(selectionStart.line, 0);
+          if (vim.visualMode && !vim.visualBlock) {
+            if (selectionEnd.line < selectionStart.line) {
+              cm.setCursor(selectionEnd);
+            } else {
+              selectionStart = Pos(selectionStart.line, 0);
+              cm.setCursor(selectionStart);
+            }
+            cm.setCursor(motions.moveToFirstNonWhiteSpaceCharacter(cm));
+          } else if (vim.visualBlock) {
+            selectionEnd = Pos(selectionEnd.line, selectionStart.ch);
+            cm.setCursor(selectionStart);
+            selectBlock(cm, selectionEnd);
+          } else {
+            cm.setCursor(motions.moveToFirstNonWhiteSpaceCharacter(cm));
           }
-          cm.setCursor(selectionEnd);
-          exitVisualMode(cm);
+        } else if (insertAt == 'endOfSelectedArea') {
+          if (vim.visualBlock) {
+            selectionStart = Pos(selectionStart.line, selectionEnd.ch);
+            cm.setCursor(selectionStart);
+            selectBlock(cm, selectionEnd);
+          } else if (selectionEnd.line < selectionStart.line) {
+            selectionEnd = Pos(selectionStart.line, 0);
+            cm.setCursor(selectionEnd);
+          }
+        } else if (insertAt == 'inplace') {
+          if (vim.visualMode){
+            return;
+          }
         }
         cm.setOption('keyMap', 'vim-insert');
         cm.setOption('disableInput', false);
@@ -2128,6 +2160,9 @@
           // Only record if not replaying.
           cm.on('change', onChange);
           CodeMirror.on(cm.getInputField(), 'keydown', onKeyEventTargetKeyDown);
+        }
+        if (vim.visualMode) {
+          exitVisualMode(cm);
         }
       },
       toggleVisualMode: function(cm, actionArgs, vim) {
@@ -2764,9 +2799,6 @@
       vim.visualLine = false;
       vim.visualBlock = false;
       if (!cursorEqual(selectionStart, selectionEnd)) {
-        // Clear the selection and set the cursor only if the selection has not
-        // already been cleared. Otherwise we risk moving the cursor somewhere
-        // it's not supposed to be.
         cm.setCursor(clipCursorToContent(cm, selectionEnd));
       }
       CodeMirror.signal(cm, "vim-mode-change", {mode: "normal"});
@@ -4498,7 +4530,32 @@
       var macroModeState = vimGlobalState.macroModeState;
       var insertModeChangeRegister = vimGlobalState.registerController.getRegister('.');
       var isPlaying = macroModeState.isPlaying;
+      var lastChange = macroModeState.lastInsertModeChanges;
+      // In case of visual block, the insertModeChanges are not saved as a
+      // single word, so we convert them to a single word
+      // so as to update the ". register as expected in real vim.
+      var text = [];
       if (!isPlaying) {
+        var selLength = lastChange.inVisualBlock ? vim.lastSelection.visualBlock.height : 1;
+        var changes = lastChange.changes;
+        var text = [];
+        var i = 0;
+        // In case of multiple selections in blockwise visual,
+        // the inserted text, for example: 'f<Backspace>oo', is stored as
+        // 'f', 'f', InsertModeKey 'o', 'o', 'o', 'o'. (if you have a block with 2 lines).
+        // We push the contents of the changes array as per the following:
+        // 1. In case of InsertModeKey, just increment by 1.
+        // 2. In case of a character, jump by selLength (2 in the example).
+        while (i < changes.length) {
+          // This loop will convert 'ff<bs>oooo' to 'f<bs>oo'.
+          text.push(changes[i]);
+          if (changes[i] instanceof InsertModeKey) {
+             i++;
+          } else {
+             i+= selLength;
+          }
+        }
+        lastChange.changes = text;
         cm.off('change', onChange);
         CodeMirror.off(cm.getInputField(), 'keydown', onKeyEventTargetKeyDown);
       }
@@ -4515,11 +4572,62 @@
       cm.setOption('disableInput', true);
       cm.toggleOverwrite(false); // exit replace mode if we were in it.
       // update the ". register before exiting insert mode
-      insertModeChangeRegister.setText(macroModeState.lastInsertModeChanges.changes.join(''));
+      insertModeChangeRegister.setText(lastChange.changes.join(''));
       CodeMirror.signal(cm, "vim-mode-change", {mode: "normal"});
       if (macroModeState.isRecording) {
         logInsertModeChange(macroModeState);
       }
+    }
+
+    defineOption('enableInsertModeEscKeys', false, 'boolean');
+    // Use this option to customize the two-character ESC keymap.
+    // If you want to use characters other than i j or k you'll have to add
+    // lines to the vim-insert and await-second keymaps later in this file.
+    defineOption('insertModeEscKeys', 'kj', 'string');
+    // The timeout in milliseconds for the two-character ESC keymap should be
+    // adjusted according to your typing speed to prevent false positives.
+    defineOption('insertModeEscKeysTimeout', 200, 'number');
+    function firstEscCharacterHandler(ch) {
+      return function(cm){
+        var keys = getOption('insertModeEscKeys');
+        var firstEscCharacter = keys && keys.length > 1 && keys.charAt(0);
+        if (!getOption('enableInsertModeEscKeys')|| firstEscCharacter !== ch) {
+          return CodeMirror.Pass;
+        } else {
+          cm.replaceRange(ch, cm.getCursor(), cm.getCursor(), "+input");
+          cm.setOption('keyMap', 'await-second');
+          cm.state.vim.awaitingEscapeSecondCharacter = true;
+          setTimeout(
+              function(){
+                if(cm.state.vim.awaitingEscapeSecondCharacter) {
+                    cm.state.vim.awaitingEscapeSecondCharacter = false;
+                    cm.setOption('keyMap', 'vim-insert');
+                }
+              },
+              getOption('insertModeEscKeysTimeout'));
+        }
+      };
+    }
+    function secondEscCharacterHandler(ch){
+      return function(cm) {
+        var keys = getOption('insertModeEscKeys');
+        var secondEscCharacter = keys && keys.length > 1 && keys.charAt(1);
+        if (!getOption('enableInsertModeEscKeys')|| secondEscCharacter !== ch) {
+          return CodeMirror.Pass;
+          // This is not the handler you're looking for. Just insert as usual.
+        } else {
+          if (cm.state.vim.insertMode) {
+            var lastChange = vimGlobalState.macroModeState.lastInsertModeChanges;
+            if (lastChange && lastChange.changes.length) {
+              lastChange.changes.pop();
+            }
+          }
+          cm.state.vim.awaitingEscapeSecondCharacter = false;
+          cm.replaceRange('', {ch: cm.getCursor().ch - 1, line: cm.getCursor().line},
+                          cm.getCursor(), "+input");
+          exitInsertMode(cm);
+        }
+      };
     }
 
     CodeMirror.keyMap['vim-insert'] = {
@@ -4535,7 +4643,21 @@
             CodeMirror.commands.newlineAndIndent;
         fn(cm);
       },
+      // The next few lines are where you'd add additional handlers if
+      // you wanted to use keys other than i j and k for two-character
+      // escape sequences. Don't forget to add them in the await-second
+      // section as well.
+      "'i'": firstEscCharacterHandler('i'),
+      "'j'": firstEscCharacterHandler('j'),
+      "'k'": firstEscCharacterHandler('k'),
       fallthrough: ['default']
+    };
+
+    CodeMirror.keyMap['await-second'] = {
+      "'i'": secondEscCharacterHandler('i'),
+      "'j'": secondEscCharacterHandler('j'),
+      "'k'": secondEscCharacterHandler('k'),
+      fallthrough: ['vim-insert']
     };
 
     CodeMirror.keyMap['vim-replace'] = {
@@ -4710,11 +4832,7 @@
           // insert mode changes. Will conform to that behavior.
           repeat = !vim.lastEditActionCommand ? 1 : repeat;
           var changeObject = macroModeState.lastInsertModeChanges;
-          // This isn't strictly necessary, but since lastInsertModeChanges is
-          // supposed to be immutable during replay, this helps catch bugs.
-          macroModeState.lastInsertModeChanges = {};
           repeatInsertModeChanges(cm, changeObject.changes, repeat);
-          macroModeState.lastInsertModeChanges = changeObject;
         }
       }
       vim.inputState = vim.lastEditInputState;
@@ -4752,6 +4870,18 @@
         }
         return true;
       }
+      var curStart = cm.getCursor();
+      var inVisualBlock = vimGlobalState.macroModeState.lastInsertModeChanges.inVisualBlock;
+      if (inVisualBlock) {
+        // Set up block selection again for repeating the changes.
+        var vim = cm.state.vim;
+        var block = vim.lastSelection.visualBlock;
+        var curEnd = Pos(curStart.line + block.height-1, curStart.ch);
+        cm.setCursor(curStart);
+        selectBlock(cm, curEnd);
+        repeat = cm.listSelections().length;
+        cm.setCursor(curStart);
+      }
       for (var i = 0; i < repeat; i++) {
         for (var j = 0; j < changes.length; j++) {
           var change = changes[j];
@@ -4761,6 +4891,10 @@
             var cur = cm.getCursor();
             cm.replaceRange(change, cur, cur);
           }
+        }
+        if (inVisualBlock) {
+          curStart.line++;
+          cm.setCursor(curStart);
         }
       }
     }
