@@ -4,6 +4,8 @@
   "main": ["lib/codemirror.js", "lib/codemirror.css"],
   "ignore": [
     "**/.*",
+    "**/*.html",
+    "**/test.js",
     "node_modules",
     "components",
     "bin",
